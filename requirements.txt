@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+requests
+beautifulsoup4
+snscrape
+arxiv
+pdfplumber
+chromadb
+sentence-transformers
+psycopg2-binary
+python-dotenv
