@@ -1,0 +1,26 @@
+{
+  "odoo": {
+    "company_name": "Odoo",
+    "instagram": "odoo",
+    "linkedin": "https://www.linkedin.com/company/odoo/",
+    "twitter": "odoo"
+  },
+  "testcompany": {
+    "company_name": "TestCompany",
+    "instagram": "test",
+    "linkedin": "https://linkedin.com/company/test",
+    "twitter": "test"
+  },
+  "tesla": {
+    "company_name": "tesla",
+    "instagram": "teslamotors",
+    "linkedin": "https://www.linkedin.com/company/tesla-motors/",
+    "twitter": "tesla"
+  },
+  "pesuventurelabs": {
+    "company_name": "pesuventurelabs",
+    "instagram": "pesuventurelabs",
+    "linkedin": "https://www.linkedin.com/company/pesu-venture-labs/",
+    "twitter": "odoo"
+  }
+}
