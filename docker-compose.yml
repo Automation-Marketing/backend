@@ -8,7 +8,6 @@ services:
       - "8000:8000"
     volumes:
       - ./backend/chroma_db:/app/backend/chroma_db
-    env_file:
-      - .env
+  
     extra_hosts:
       - "host.docker.internal:host-gateway"
