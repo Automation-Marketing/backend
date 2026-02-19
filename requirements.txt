@@ -13,7 +13,9 @@ requests>=2.31.0
 # Vector Database & Embeddings
 chromadb>=0.4.22
 langchain>=0.1.0
+langchain-core>=0.1.0
 langchain-community>=0.0.10
+langchain-ollama>=0.1.0
 
 # Text Processing
 tiktoken>=0.5.0

@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional
 import asyncio
+import os
 import requests
 
 # Import our services
@@ -21,7 +22,7 @@ app = FastAPI(title="Social Media Marketing Automation API")
 app.include_router(brand_router)
 app.include_router(campaign_router)
 
-OLLAMA_URL = "http://host.docker.internal:11434/api/generate"
+OLLAMA_URL = os.getenv("OLLAMA_HOST_URL", "http://localhost:11434/api/generate")
 
 @app.get("/")
 def read_root():

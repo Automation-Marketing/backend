@@ -13,11 +13,13 @@ class VectorDB:
     
     def __init__(self, persist_directory: str = "./chroma_db"):
         """Initialize ChromaDB with persistent storage."""
+        import os
         self.client = chromadb.PersistentClient(
             path=persist_directory,
             settings=Settings(anonymized_telemetry=False)
         )
-        self.ollama_url = "http://localhost:11434/api/embeddings"
+        ollama_host = os.getenv("OLLAMA_HOST", "localhost")
+        self.ollama_url = f"http://{ollama_host}:11434/api/embeddings"
         self.embedding_model = "nomic-embed-text"
         
     def _generate_embedding(self, text: str) -> List[float]:
@@ -79,6 +81,10 @@ class VectorDB:
             return
         
         collection = self.get_or_create_collection(company)
+
+        print("Searching collection:", collection.name)
+        print("Collection count:", collection.count())
+
         
         # Get existing posts to check for duplicates
         try:
@@ -171,6 +177,10 @@ class VectorDB:
             List of matching posts with metadata
         """
         collection = self.get_or_create_collection(company_name)
+
+        print("Searching collection:", collection.name)
+        print("Collection count:", collection.count())
+
         
         # Generate query embedding
         query_embedding = self._generate_embedding(query)
