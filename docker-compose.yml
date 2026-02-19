@@ -6,8 +6,10 @@ services:
     container_name: backend-agent
     ports:
       - "8000:8000"
+    env_file:
+      - .env
     volumes:
       - ./backend/chroma_db:/app/backend/chroma_db
-  
+
     extra_hosts:
       - "host.docker.internal:host-gateway"

@@ -99,7 +99,7 @@ class CompanyResolver:
             "twitter": handles.get("twitter", "")
         }
         self._save_mappings()
-        print(f"✅ Added {company_name} to company database")
+        print(f"Added {company_name} to company database")
     
     def get_company(self, company_name: str) -> Optional[Dict]:
         """Get company handles from database."""

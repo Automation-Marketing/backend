@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from services.db_service import get_connection
 
@@ -26,6 +26,10 @@ def create_brand(data: BrandCreate):
             "message": "Brand stored successfully",
             "brand_id": brand_id
         }
+
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
 
     finally:
         cur.close()
