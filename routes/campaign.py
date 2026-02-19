@@ -1,5 +1,6 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
+from typing import List
 from services.db_service import get_connection
 
 router = APIRouter()
@@ -9,7 +10,7 @@ class CampaignCreate(BaseModel):
     icp: str
     tone: str
     description: str
-    content_type: str
+    content_types: List[str]   # e.g. ["image", "carousel", "video_script"]
 
 
 @router.post("/campaign/create")
@@ -29,7 +30,7 @@ def create_campaign(data: CampaignCreate):
                 data.icp,
                 data.tone,
                 data.description,
-                data.content_type,
+                ",".join(data.content_types),   # store as "image,carousel,video_script"
                 "draft"
             )
         )
@@ -38,9 +39,14 @@ def create_campaign(data: CampaignCreate):
         conn.commit()
 
         return {
+            "success": True,
             "message": "Campaign created successfully",
             "campaign_id": campaign_id
         }
+
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
 
     finally:
         cur.close()
