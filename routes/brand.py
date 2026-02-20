@@ -36,7 +36,6 @@ async def create_brand(data: BrandCreate):
     conn = get_connection()
     cur = conn.cursor()
 
-    # ── Step 1: Save brand to Postgres ──────────────────────────────────────
     try:
         cur.execute(
             """
@@ -58,7 +57,6 @@ async def create_brand(data: BrandCreate):
         cur.close()
         conn.close()
 
-    # ── Step 2: Resolve social handles ──────────────────────────────────────
     try:
         handles = company_resolver.resolve(
             data.company_name,
@@ -69,7 +67,6 @@ async def create_brand(data: BrandCreate):
         print(f"[brand/create] Resolved handles: {handles}")
 
         if not any(handles.values()):
-            # No social handles provided — skip scraping but still return success
             return {
                 "success": True,
                 "brand_id": brand_id,
@@ -79,7 +76,6 @@ async def create_brand(data: BrandCreate):
                 "chunks_created": 0
             }
 
-        # ── Step 3: Scrape all platforms in parallel ─────────────────────────
         print(f"[brand/create] Starting scraping for '{data.company_name}'...")
         scraped_data = await ScrapingOrchestrator.scrape_all_platforms(
             instagram_handle=handles.get("instagram") or None,
@@ -97,7 +93,6 @@ async def create_brand(data: BrandCreate):
                 "chunks_created": 0
             }
 
-        # ── Step 4: Process & chunk scraped content ──────────────────────────
         print(f"[brand/create] Processing scraped content...")
         chunks = text_processor.process_all_platforms(scraped_data, data.company_name)
 
@@ -111,7 +106,6 @@ async def create_brand(data: BrandCreate):
                 "chunks_created": 0
             }
 
-        # ── Step 5: Embed & store in vector DB ──────────────────────────────
         print(f"[brand/create] Embedding {len(chunks)} chunks into vector DB...")
         vector_db.add_posts(data.company_name, chunks)
 

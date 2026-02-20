@@ -17,7 +17,6 @@ import json
 
 router = APIRouter()
 
-# Singleton agent (reuse LLM connection across requests)
 _agent: ContentAgent | None = None
 
 
@@ -27,17 +26,12 @@ def get_agent() -> ContentAgent:
         _agent = ContentAgent()
     return _agent
 
-
-# ---------------------------------------------------------------------------
-# Request schema
-# ---------------------------------------------------------------------------
-
 class CampaignCreate(BaseModel):
     brand_id: int
-    icp: str                            # Ideal Customer Profile
-    tone: str                           # e.g. Professional, Casual, Bold
-    description: str                    # Campaign topic / description
-    content_types: List[str]            # ["image", "carousel", "video_script"]
+    icp: str                            
+    tone: str                           
+    description: str
+    content_types: List[str]            
     template_type: Literal[
         "educational",
         "problem_solution",
@@ -47,18 +41,12 @@ class CampaignCreate(BaseModel):
         description="Prompt template strategy for content generation",
     )
 
-
-# ---------------------------------------------------------------------------
-# Endpoint
-# ---------------------------------------------------------------------------
-
 @router.post("/campaign/create")
 def create_campaign(data: CampaignCreate):
     conn = get_connection()
     cur = conn.cursor()
 
     try:
-        # ── 1. Resolve brand ────────────────────────────────────────────────
         cur.execute(
             "SELECT company_name FROM brands WHERE id = %s",
             (data.brand_id,),
@@ -70,7 +58,6 @@ def create_campaign(data: CampaignCreate):
 
         company_name = brand["company_name"]
 
-        # ── 2. Persist campaign record ──────────────────────────────────────
         cur.execute(
             """
             INSERT INTO campaigns
@@ -90,7 +77,6 @@ def create_campaign(data: CampaignCreate):
         campaign_id = cur.fetchone()["id"]
         conn.commit()
 
-        # ── 3. RAG content generation via LangChain + Llama3 ───────────────
         agent = get_agent()
         generated_content = agent.generate(
             brand=company_name,
@@ -100,9 +86,6 @@ def create_campaign(data: CampaignCreate):
             template_type=data.template_type,
         )
 
-        # ── 4. Filter to only requested content_types ───────────────────────
-        #   The agent always generates all variants; we expose only what the
-        #   user requested so the frontend tab logic is preserved.
         filtered_content = {
             "template_type": generated_content.get("template_type"),
             "tags":          generated_content.get("tags", []),
@@ -113,7 +96,6 @@ def create_campaign(data: CampaignCreate):
         if "video_script" in data.content_types:
             filtered_content["video_script"] = generated_content.get("video_script")
 
-        # ── 5. Persist generated content ────────────────────────────────────
         cur.execute(
             """
             UPDATE campaigns
