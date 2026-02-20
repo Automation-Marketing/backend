@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field
 from typing import List, Literal
 from services.db_service import get_connection
 from agents.content_agent import ContentAgent
+from services.image_service import image_service
 import json
 
 router = APIRouter()
@@ -45,6 +46,7 @@ class CampaignCreate(BaseModel):
 def create_campaign(data: CampaignCreate):
     conn = get_connection()
     cur = conn.cursor()
+    print(f"DEBUG: Received content_types: {data.content_types}", flush=True)
 
     try:
         cur.execute(
@@ -83,16 +85,35 @@ def create_campaign(data: CampaignCreate):
             icp=data.icp,
             tone=data.tone,
             description=data.description,
+            content_types=data.content_types,
             template_type=data.template_type,
         )
 
         filtered_content = {
             "template_type": generated_content.get("template_type"),
             "tags":          generated_content.get("tags", []),
-            "canonical_post": generated_content.get("canonical_post", ""),
         }
-        if "image" in data.content_types or "carousel" in data.content_types:
-            filtered_content["carousel"] = generated_content.get("carousel")
+
+        if "image" in data.content_types or "canonical_post" in data.content_types:
+            filtered_content["canonical_post"] = generated_content.get("canonical_post", "")
+            img_url = image_service.generate_image(generated_content.get("visual_direction", data.description))
+            filtered_content["image_url"] = img_url
+            generated_content["image_url"] = img_url # Keep sync with full object
+
+        if "carousel" in data.content_types:
+            carousel_data = generated_content.get("carousel", {})
+            slides = carousel_data.get("slides", [])
+            for slide in slides:
+                slide_prompt = slide.get("image_prompt", f"Slide: {slide.get('title')}")
+                slide["image_url"] = image_service.generate_image(slide_prompt)
+            
+            cta_slide = carousel_data.get("cta_slide", {})
+            if cta_slide:
+                cta_prompt = cta_slide.get("image_prompt", "Call to action")
+                cta_slide["image_url"] = image_service.generate_image(cta_prompt)
+                
+            filtered_content["carousel"] = carousel_data
+
         if "video_script" in data.content_types:
             filtered_content["video_script"] = generated_content.get("video_script")
 

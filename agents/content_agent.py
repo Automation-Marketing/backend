@@ -15,7 +15,7 @@ from typing import Optional
 from langchain_groq import ChatGroq
 from langchain_core.output_parsers import JsonOutputParser
 
-from agents.prompt_templates import TEMPLATE_REGISTRY
+from agents.prompt_templates import get_template_for_type
 from services.vector_db import VectorDB
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
@@ -127,6 +127,7 @@ class ContentAgent:
         icp: str,
         tone: str,
         description: str,
+        content_types: list[str],
         template_type: str = "educational",
     ) -> dict:
         """
@@ -137,6 +138,7 @@ class ContentAgent:
             icp:           Target audience description
             tone:          Writing tone (Professional, Casual, etc.)
             description:   Campaign description / topic
+            content_types: List of requested content types ("image", "carousel", "video_script")
             template_type: One of 'educational', 'problem_solution', 'trust_story'
 
         Returns:
@@ -155,7 +157,7 @@ class ContentAgent:
         context = self._get_context(brand, query, top_k=5)
         print(f"[ContentAgent] Retrieved {len(context)} chars of context")
 
-        prompt = TEMPLATE_REGISTRY[template_type]
+        prompt = get_template_for_type(template_type, content_types)
 
         chain = prompt | self.llm | self.parser
 
