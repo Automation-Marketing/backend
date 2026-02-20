@@ -16,12 +16,14 @@ from services.vector_db import VectorDB
 # Import routers
 from routes.brand import router as brand_router
 from routes.campaign import router as campaign_router
+from routes.publish import router as publish_router
 
 app = FastAPI(title="Social Media Marketing Automation API")
 
 # Register routers
 app.include_router(brand_router)
 app.include_router(campaign_router)
+app.include_router(publish_router)
 
 OLLAMA_URL = os.getenv("OLLAMA_HOST_URL", "http://localhost:11434/api/generate")
 
