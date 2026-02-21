@@ -10,13 +10,11 @@ from services.vector_db import VectorDB
 
 router = APIRouter()
 
-# Shared service instances
 company_resolver = CompanyResolver()
 text_processor = TextProcessor()
 vector_db = VectorDB()
 
 
-# Request model
 class BrandCreate(BaseModel):
     company_name: str
     instagram_handle: Optional[str] = None

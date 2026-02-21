@@ -30,7 +30,6 @@ async def scrape_linkedin(company_url):
             
             try:
                 print("2️ Loading session file...")
-                # Get absolute path to session file
                 session_file = Path(__file__).parent / "session_storage" / "linkedin_session.json"
                 print(f"   Session file path: {session_file}")
                 
@@ -89,7 +88,6 @@ async def scrape_linkedin(company_url):
                 print("6️ Extracting company info...")
                 company_data = {}
 
-                # Company Name
                 title = soup.find("title")
                 if title:
                     company_data["company_name"] = title.text.strip()
@@ -97,7 +95,6 @@ async def scrape_linkedin(company_url):
                 else:
                     print(f"No company name found")
 
-                # About Section
                 about_section = soup.find("p")
                 if about_section:
                     company_data["about"] = about_section.text.strip()
@@ -131,7 +128,7 @@ async def scrape_linkedin(company_url):
                         if text and len(text) > 10:
                             posts.append({
                                 "content": text,
-                                "post_date": "",  # LinkedIn doesn't easily expose dates
+                                "post_date": "",  
                                 "post_url": company_url
                             })
                             print(f"   Post {idx}: {text[:50]}...")
@@ -168,7 +165,6 @@ async def scrape_linkedin(company_url):
         print(f"Error Type: {type(e).__name__}")
         print(f"{'='*60}\n")
         
-        # Return empty data instead of raising
         return {
             "company_url": company_url,
             "company_info": {"error": str(e)},

@@ -14,7 +14,6 @@ async def save_session():
         print("Login manually within 60 seconds...")
         await page.wait_for_timeout(20000)
 
-        # Use absolute path to the session_storage folder
         base_dir = Path(__file__).resolve().parent.parent  # Go up to backend/services
         session_path = base_dir / "session_storage" / "linkedin_session.json"
         session_path.parent.mkdir(parents=True, exist_ok=True)

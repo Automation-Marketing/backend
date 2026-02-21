@@ -23,17 +23,13 @@ class TextProcessor:
         if not text:
             return ""
         
-        # Remove excessive whitespace
         text = re.sub(r'\s+', ' ', text)
         
-        # Remove URLs (but keep the context)
         text = re.sub(r'http\S+|www\.\S+', '', text)
         
-        # Normalize quotes
         text = text.replace('"', '"').replace('"', '"')
         text = text.replace(''', "'").replace(''', "'")
         
-        # Strip leading/trailing whitespace
         text = text.strip()
         
         return text
@@ -65,20 +61,16 @@ class TextProcessor:
         chunks = []
         
         for post in posts:
-            # Get text content
             text = post.get("content", "") or post.get("caption", "")
             
-            if not text or len(text.strip()) < 10:  # Skip very short posts
+            if not text or len(text.strip()) < 10: 
                 continue
             
-            # Clean text
             cleaned_text = TextProcessor.clean_text(text)
             
-            # Extract hashtags and mentions
             hashtags = TextProcessor.extract_hashtags(text)
             mentions = TextProcessor.extract_mentions(text)
             
-            # Extract metadata
             metadata = {
                 "platform": platform,
                 "company": company,
@@ -86,13 +78,11 @@ class TextProcessor:
                 "post_url": post.get("post_url", ""),
             }
             
-            # Add hashtags and mentions only if they exist (ChromaDB doesn't allow empty lists)
             if hashtags:
-                metadata["hashtags"] = ", ".join(hashtags)  # Convert list to string
+                metadata["hashtags"] = ", ".join(hashtags)  
             if mentions:
-                metadata["mentions"] = ", ".join(mentions)  # Convert list to string
+                metadata["mentions"] = ", ".join(mentions) 
             
-            # Platform-specific metadata
             if platform == "instagram":
                 if post.get("likes"):
                     metadata["likes"] = str(post.get("likes", ""))
@@ -103,7 +93,6 @@ class TextProcessor:
                 if post.get("company_url"):
                     metadata["company_url"] = post.get("company_url", "")
             elif platform == "twitter":
-                # Twitter-specific fields can be added here
                 pass
             
             chunks.append({
@@ -127,21 +116,18 @@ class TextProcessor:
         """
         all_chunks = []
         
-        # Process Instagram
         if "instagram" in scraped_data and scraped_data["instagram"]:
             instagram_posts = scraped_data["instagram"].get("last_10_posts_and_reels", [])
             chunks = TextProcessor.chunk_posts(instagram_posts, "instagram", company)
             all_chunks.extend(chunks)
             print(f"Processed {len(chunks)} Instagram posts")
         
-        # Process LinkedIn
         if "linkedin" in scraped_data and scraped_data["linkedin"]:
             linkedin_posts = scraped_data["linkedin"].get("recent_posts", [])
             chunks = TextProcessor.chunk_posts(linkedin_posts, "linkedin", company)
             all_chunks.extend(chunks)
             print(f"Processed {len(chunks)} LinkedIn posts")
         
-        # Process Twitter
         if "twitter" in scraped_data and scraped_data["twitter"]:
             twitter_posts = scraped_data["twitter"].get("posts", [])
             chunks = TextProcessor.chunk_posts(twitter_posts, "twitter", company)
@@ -152,9 +138,7 @@ class TextProcessor:
         return all_chunks
 
 
-# Test the text processor
 if __name__ == "__main__":
-    # Test data
     test_posts = [
         {
             "content": "Check out our new product! z#AI #Innovation https://example.com @tech_news",
@@ -170,14 +154,12 @@ if __name__ == "__main__":
     
     processor = TextProcessor()
     
-    # Test cleaning
     print("Testing text cleaning:")
     for post in test_posts:
         cleaned = processor.clean_text(post["content"])
         print(f"Original: {post['content']}")
         print(f"Cleaned:  {cleaned}\n")
-    
-    # Test chunking
+        
     print("Testing chunking:")
     chunks = processor.chunk_posts(test_posts, "instagram", "TestCompany")
     for i, chunk in enumerate(chunks, 1):

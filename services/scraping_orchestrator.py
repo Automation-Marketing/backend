@@ -3,7 +3,6 @@ from typing import Dict, Optional
 from pathlib import Path
 import sys
 
-# Add parent directory to path for imports
 sys.path.append(str(Path(__file__).parent))
 
 from instagram_service import scrape_instagram
@@ -77,7 +76,6 @@ class ScrapingOrchestrator:
         tasks = []
         platform_keys = []
         
-        # Prepare tasks
         if instagram_handle:
             instagram_url = f"https://www.instagram.com/{instagram_handle}/"
             tasks.append(ScrapingOrchestrator.scrape_instagram_safe(instagram_url))
@@ -95,10 +93,8 @@ class ScrapingOrchestrator:
             print("No platforms to scrape")
             return {}
         
-        # Execute all tasks in parallel
         results = await asyncio.gather(*tasks)
         
-        # Combine results
         combined_results = {}
         for key, result in zip(platform_keys, results):
             if result:
@@ -111,17 +107,14 @@ class ScrapingOrchestrator:
         return combined_results
 
 
-# Test the orchestrator
 if __name__ == "__main__":
     async def test():
-        # Test with sample handles
         results = await ScrapingOrchestrator.scrape_all_platforms(
             instagram_handle="teslamotors",
             linkedin_url="https://www.linkedin.com/company/tesla-motors/",
             twitter_handle="tesla"
         )
         
-        # Print summary
         for platform, data in results.items():
             print(f"\n{platform.upper()}:")
             if platform == "instagram":

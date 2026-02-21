@@ -3,7 +3,6 @@ from pathlib import Path
 from typing import Dict, Optional
 
 
-# Absolute path to company_mappings.json, relative to this file's location
 _DEFAULT_DB_PATH = Path(__file__).parent / "company_mappings.json"
 
 
@@ -52,11 +51,9 @@ class CompanyResolver:
         """
         company_key = company_name.lower().strip()
         
-        # Check if company exists in database
         if company_key in self.mappings:
             handles = self.mappings[company_key].copy()
             
-            # Override with provided values
             if instagram:
                 handles["instagram"] = instagram
             if linkedin:
@@ -66,14 +63,12 @@ class CompanyResolver:
                 
             return handles
         
-        # If not in database, use provided values or return empty
         handles = {
             "instagram": instagram or "",
             "linkedin": linkedin or "",
             "twitter": twitter or ""
         }
         
-        # Save to database for future use
         if any(handles.values()):
             self.add_company(company_name, handles)
         
@@ -111,11 +106,9 @@ class CompanyResolver:
         return [v["company_name"] for v in self.mappings.values()]
 
 
-# Test the company resolver
 if __name__ == "__main__":
     resolver = CompanyResolver()
     
-    # Add test companies
     print("Adding test companies...")
     
     resolver.add_company("Tesla", {
@@ -130,11 +123,9 @@ if __name__ == "__main__":
         "twitter": "odoo"
     })
     
-    # Resolve
     print("\nResolving Tesla...")
     handles = resolver.resolve("Tesla")
     print(json.dumps(handles, indent=2))
     
-    # List all
     print("\nAll companies in database:")
     print(resolver.list_companies())

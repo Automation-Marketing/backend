@@ -22,7 +22,6 @@ async def scrape_instagram(profile_url):
     print(f"Profile URL: {profile_url}\n")
     
     try:
-        # Extract username from URL
         username = profile_url.rstrip('/').split('/')[-1]
         print(f"Username: {username}\n")
         
@@ -57,13 +56,11 @@ async def scrape_instagram(profile_url):
                 html = await page.content()
                 soup = BeautifulSoup(html, "html.parser")
                 
-                # Check for login wall
                 if "Log in to Instagram" in html or "Sign up" in html:
                     print("Instagram is showing login page")
                 
                 profile_data = {}
                 
-                # Get meta tags
                 meta_desc = soup.find("meta", property="og:description")
                 if meta_desc:
                     profile_data["description"] = meta_desc["content"]
@@ -139,7 +136,6 @@ async def scrape_instagram(profile_url):
                     likes = ""
                     media_type = "reel" if "/reel/" in link else "tv" if "/tv/" in link else "post"
 
-                    # Caption
                     desc = post_soup.find("meta", property="og:description")
                     if desc:
                         caption = desc["content"]
@@ -149,17 +145,14 @@ async def scrape_instagram(profile_url):
                         if caption_meta:
                             caption = caption_meta.get("content", "")
 
-                    # Image
                     img = post_soup.find("meta", property="og:image")
                     if img:
                         image_url = img["content"]
 
-                    # Date
                     time_tag = post_soup.find("time")
                     if time_tag:
                         post_date = time_tag.get("datetime", "")
-
-                    # Likes
+                        
                     if caption:
                         like_match = re.search(r"([\d,]+)\s+[Ll]ikes", caption)
                         if like_match:

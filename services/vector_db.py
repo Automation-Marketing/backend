@@ -56,10 +56,8 @@ class VectorDB:
         Returns:
             ChromaDB collection
         """
-        # Sanitize collection name (ChromaDB requirements)
         collection_name = f"company_{company_name.lower().replace(' ', '_').replace('-', '_')}"
         
-        # ChromaDB will create if doesn't exist
         collection = self.client.get_or_create_collection(
             name=collection_name,
             metadata={"company": company_name}
@@ -86,17 +84,14 @@ class VectorDB:
         print("Collection count:", collection.count())
 
         
-        # Get existing posts to check for duplicates
         try:
             existing_data = collection.get(include=["documents", "metadatas"])
             existing_posts = set()
             
             if existing_data["documents"]:
-                # Create unique identifiers for existing posts (text + platform)
                 for i, doc in enumerate(existing_data["documents"]):
                     metadata = existing_data["metadatas"][i] if i < len(existing_data["metadatas"]) else {}
                     platform = metadata.get("platform", "unknown")
-                    # Use first 100 chars of text + platform as unique identifier
                     unique_id = f"{platform}:{doc[:100]}"
                     existing_posts.add(unique_id)
                 
@@ -105,7 +100,6 @@ class VectorDB:
             print(f"Could not check for duplicates: {e}")
             existing_posts = set()
         
-        # Filter out duplicates
         new_chunks = []
         duplicate_count = 0
         
@@ -182,22 +176,18 @@ class VectorDB:
         print("Collection count:", collection.count())
 
         
-        # Generate query embedding
         query_embedding = self._generate_embedding(query)
         
-        # Build filter
         where_filter = None
         if platform_filter:
             where_filter = {"platform": platform_filter}
         
-        # Search
         results = collection.query(
             query_embeddings=[query_embedding],
             n_results=top_k,
             where=where_filter
         )
         
-        # Format results
         formatted_results = []
         if results["documents"]:
             for i in range(len(results["documents"][0])):

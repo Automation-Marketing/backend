@@ -7,15 +7,11 @@ router = APIRouter()
 telegram_agent = TelegramAgent()
 
 class PublishRequest(BaseModel):
-    content_type: str  # "canonical", "carousel", or "video_script"
+    content_type: str  
     data: Dict[str, Any]
-    # The frontend needs to pass absolute URLs (e.g. http://localhost:8000/static/...)
-    # for the bot to fetch them, since telegram's API requires valid HTTP URLs or file uploads.
-    # To keep it simple, we expect the frontend to provide full URLs if it wants images attached.
 
 def _to_local_path(url: str) -> str:
     if not url: return url
-    # Convert http://localhost:8000/static/abc.jpg -> static/abc.jpg
     if "/static/" in url:
         return "static/" + url.split("/static/")[-1]
     return url
@@ -59,15 +55,26 @@ def publish_to_telegram(req: PublishRequest):
             caption = "\n".join(caption_parts)
             if cta:
                 caption += f"\n\n👉 {cta.get('title', '')}: {cta.get('body', '')}"
+                
+            tags = data.get("tags", [])
+            if tags:
+                tag_str = " ".join([f"#{tag}" for tag in tags])
+                caption += f"\n\n{tag_str}"
 
             if image_urls:
-                result = telegram_agent.send_media_group(media_urls=image_urls, caption=caption)
+                result = telegram_agent.send_media_group(media_paths=image_urls, caption=caption)
             else:
                 result = telegram_agent.send_message(text=caption)
                 
         elif content_type == "video_script":
             script = data.get("video_script", {})
             text = f"🎬 <b>Video Script</b>\n\n<b>Hook:</b> {script.get('hook', '')}\n\n<b>Body:</b> {script.get('body', '')}\n\n<b>CTA:</b> {script.get('cta', '')}\n\n<b>Caption:</b> {script.get('caption', '')}"
+            
+            tags = data.get("tags", [])
+            if tags:
+                tag_str = " ".join([f"#{tag}" for tag in tags])
+                text += f"\n\n{tag_str}"
+                
             result = telegram_agent.send_message(text=text)
             
         else:
