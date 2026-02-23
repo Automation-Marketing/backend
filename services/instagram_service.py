@@ -4,7 +4,8 @@ import re
 from playwright.async_api import async_playwright
 from bs4 import BeautifulSoup
 
-PROFILE_URL = "https://www.instagram.com/pesuventurelabs/"
+PROFILE_URL = "https://www.instagram.com/spacex/"
+POSTS_LIMIT = 20
 
 
 def extract_hashtags(text):
@@ -20,11 +21,11 @@ async def scrape_instagram(profile_url):
     print(f"INSTAGRAM SCRAPER STARTED")
     print(f"{'='*60}")
     print(f"Profile URL: {profile_url}\n")
-    
+
     try:
         username = profile_url.rstrip('/').split('/')[-1]
         print(f"Username: {username}\n")
-        
+
         async with async_playwright() as p:
             print("1️ Launching browser...")
             try:
@@ -32,9 +33,7 @@ async def scrape_instagram(profile_url):
                     headless=True,
                     args=["--disable-blink-features=AutomationControlled"]
                 )
-                context = await browser.new_context(
-                    user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-                )
+                context = await browser.new_context()
                 page = await context.new_page()
                 print("Browser launched successfully\n")
             except Exception as e:
@@ -55,30 +54,29 @@ async def scrape_instagram(profile_url):
                 print("3️ Extracting profile data...")
                 html = await page.content()
                 soup = BeautifulSoup(html, "html.parser")
-                
+
                 if "Log in to Instagram" in html or "Sign up" in html:
                     print("Instagram is showing login page")
                 
                 profile_data = {}
-                
                 meta_desc = soup.find("meta", property="og:description")
+
                 if meta_desc:
                     profile_data["description"] = meta_desc["content"]
                     print(f"   Profile: {meta_desc['content'][:50]}...")
-                
+
                 profile_data["profile_url"] = profile_url
                 print("Profile data extracted\n")
-                
             except Exception as e:
                 print(f"Failed to extract profile data: {e}")
                 profile_data = {"profile_url": profile_url}
 
             try:
                 print("4️ Scrolling to load posts...")
-                for i in range(3):
-                    await page.mouse.wheel(0, 5000)
+                for i in range(5):
+                    await page.mouse.wheel(0, 8000)
                     await page.wait_for_timeout(2000)
-                    print(f"   Scroll {i+1}/3 complete")
+                    print(f"   Scroll {i+1}/5 complete")
                 print("Scrolling complete\n")
             except Exception as e:
                 print(f"Scrolling error: {e}\n")
@@ -87,31 +85,22 @@ async def scrape_instagram(profile_url):
                 print("5️ Finding post links...")
                 html = await page.content()
                 soup = BeautifulSoup(html, "html.parser")
-                
-                all_links = soup.find_all("a", href=True)
+
                 post_links = []
-                
-                for a in all_links:
+                for a in soup.find_all("a", href=True):
                     href = a["href"]
-                    if "/p/" in href or "/reel/" in href or "/tv/" in href:
-                        if href.startswith("/"):
-                            full_link = f"https://www.instagram.com{href}"
-                        else:
-                            full_link = href
-                        
-                        full_link = full_link.split("?")[0]
-                        
+                    if "/p/" in href or "/reel/" in href:
+                        full_link = f"https://www.instagram.com{href}"
                         if full_link not in post_links:
                             post_links.append(full_link)
-                
+
                 print(f"Found {len(post_links)} post/reel links")
-                
             except Exception as e:
-                print(f"   ❌ Failed to find post links: {e}")
+                print(f"   Failed to find post links: {e}")
                 post_links = []
 
             posts_data = []
-            
+
             if not post_links:
                 print("No posts to scrape!\n")
                 await browser.close()
@@ -121,11 +110,11 @@ async def scrape_instagram(profile_url):
                 }
 
             print("6️ Scraping individual posts...")
-            for idx, link in enumerate(post_links[:10], 1):
+            for idx, link in enumerate(post_links[:POSTS_LIMIT], 1):
                 try:
-                    print(f"   Post {idx}/10: {link}")
-                    await page.goto(link, timeout=30000)
-                    await page.wait_for_timeout(3000)
+                    print(f"   Post {idx}/{POSTS_LIMIT}: {link}")
+                    await page.goto(link)
+                    await page.wait_for_timeout(4000)
 
                     post_html = await page.content()
                     post_soup = BeautifulSoup(post_html, "html.parser")
@@ -134,16 +123,12 @@ async def scrape_instagram(profile_url):
                     image_url = ""
                     post_date = ""
                     likes = ""
-                    media_type = "reel" if "/reel/" in link else "tv" if "/tv/" in link else "post"
+                    media_type = "reel" if "/reel/" in link else "post"
 
                     desc = post_soup.find("meta", property="og:description")
                     if desc:
                         caption = desc["content"]
                         print(f"      Caption: {caption[:50]}...")
-                    else:
-                        caption_meta = post_soup.find("meta", attrs={"name": "description"})
-                        if caption_meta:
-                            caption = caption_meta.get("content", "")
 
                     img = post_soup.find("meta", property="og:image")
                     if img:
@@ -152,52 +137,49 @@ async def scrape_instagram(profile_url):
                     time_tag = post_soup.find("time")
                     if time_tag:
                         post_date = time_tag.get("datetime", "")
-                        
+
                     if caption:
-                        like_match = re.search(r"([\d,]+)\s+[Ll]ikes", caption)
+                        like_match = re.search(r"([\d,]+)\s+Likes", caption)
                         if like_match:
                             likes = like_match.group(1)
 
-                    if caption or image_url:
-                        posts_data.append({
-                            "media_type": media_type,
-                            "post_url": link,
-                            "caption": caption,
-                            "hashtags": extract_hashtags(caption),
-                            "likes": likes,
-                            "image_url": image_url,
-                            "post_date": post_date
-                        })
-                        print(f"Post scraped successfully")
-                    else:
-                        print(f"No content found")
+                    posts_data.append({
+                        "media_type": media_type,
+                        "post_url": link,
+                        "caption": caption,
+                        "hashtags": extract_hashtags(caption),
+                        "likes": likes,
+                        "image_url": image_url,
+                        "post_date": post_date
+                    })
+                    print(f"      Post scraped successfully")
 
-                    await asyncio.sleep(1)
-                    
+                    await asyncio.sleep(2)
+
                 except Exception as e:
-                    print(f"      ❌ Failed: {e}")
+                    print(f"      Failed: {e}")
                     continue
 
             await browser.close()
-            
+
             print(f"\n{'='*60}")
             print(f"INSTAGRAM SCRAPING COMPLETE")
-            print(f"   Profile data: {'✅' if profile_data else '❌'}")
-            print(f"   Posts scraped: {len(posts_data)}/10")
+            print(f"   Profile data: {'YES' if profile_data else 'NO'}")
+            print(f"   Posts scraped: {len(posts_data)}/{POSTS_LIMIT}")
             print(f"{'='*60}\n")
 
             return {
                 "profile": profile_data,
                 "last_10_posts_and_reels": posts_data
             }
-            
+
     except Exception as e:
         print(f"\n{'='*60}")
-        print(f"❌ INSTAGRAM SCRAPING FAILED")
+        print(f"INSTAGRAM SCRAPING FAILED")
         print(f"Error: {str(e)}")
         print(f"Error Type: {type(e).__name__}")
         print(f"{'='*60}\n")
-        
+
         return {
             "profile": {"profile_url": profile_url, "error": str(e)},
             "last_10_posts_and_reels": []

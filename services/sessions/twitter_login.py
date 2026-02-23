@@ -2,31 +2,16 @@ import asyncio
 from pathlib import Path
 from playwright.async_api import async_playwright
 
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from services.stealth_browser import create_stealth_browser, create_stealth_context, create_stealth_page
+
 
 async def save_session():
     async with async_playwright() as p:
-        browser = await p.chromium.launch(
-            headless=False,
-            args=[
-                '--disable-blink-features=AutomationControlled',
-                '--disable-dev-shm-usage',
-                '--no-sandbox',
-                '--disable-web-security'
-            ]
-        )
-        
-        context = await browser.new_context(
-            viewport={'width': 1920, 'height': 1080},
-            user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
-        )
-        
-        await context.add_init_script("""
-            Object.defineProperty(navigator, 'webdriver', {
-                get: () => undefined
-            });
-        """)
-        
-        page = await context.new_page()
+        browser = await create_stealth_browser(p, headless=False)
+        context = await create_stealth_context(browser)
+        page = await create_stealth_page(context)
         
         print("Opening Twitter login page...")
         try:
