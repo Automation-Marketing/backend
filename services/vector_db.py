@@ -1,47 +1,56 @@
+import os
+from dotenv import load_dotenv
+load_dotenv()
+
 import chromadb
 from chromadb.config import Settings
-import requests
 import json
 from typing import List, Dict, Optional
+from google import genai
+from google.genai import types
 
 
 class VectorDB:
     """
-    Vector database service using ChromaDB with Ollama embeddings.
+    Vector database service using ChromaDB with Gemini embeddings.
     Manages storage and retrieval of social media posts.
     """
     
     def __init__(self, persist_directory: str = "./chroma_db"):
         """Initialize ChromaDB with persistent storage."""
-        import os
         self.client = chromadb.PersistentClient(
             path=persist_directory,
             settings=Settings(anonymized_telemetry=False)
         )
-        ollama_host = os.getenv("OLLAMA_HOST", "localhost")
-        self.ollama_url = f"http://{ollama_host}:11434/api/embeddings"
-        self.embedding_model = "nomic-embed-text"
+        # Using Gemini instead of Ollama
+        api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+        self.genai_client = genai.Client(api_key=api_key)
+        self.embedding_model = "gemini-embedding-001"
         
-    def _generate_embedding(self, text: str) -> List[float]:
+    def _generate_embedding(self, text: str, is_query: bool = False) -> List[float]:
         """
-        Generate embeddings using Ollama's nomic-embed-text model.
+        Generate embeddings using Gemini's gemini-embedding-001 model.
         
         Args:
             text: Text to embed
+            is_query: Differentiate between document embedding and query embedding
             
         Returns:
             List of embedding values
         """
         try:
-            response = requests.post(
-                self.ollama_url,
-                json={
-                    "model": self.embedding_model,
-                    "prompt": text
-                }
+            task_type = "RETRIEVAL_QUERY" if is_query else "RETRIEVAL_DOCUMENT"
+            title = "Company Post" if not is_query else None
+            
+            response = self.genai_client.models.embed_content(
+                model=self.embedding_model,
+                contents=text,
+                config=types.EmbedContentConfig(
+                    task_type=task_type,
+                    title=title
+                )
             )
-            response.raise_for_status()
-            return response.json()["embedding"]
+            return response.embeddings[0].values
         except Exception as e:
             print(f"Error generating embedding: {e}")
             raise
@@ -176,7 +185,7 @@ class VectorDB:
         print("Collection count:", collection.count())
 
         
-        query_embedding = self._generate_embedding(query)
+        query_embedding = self._generate_embedding(query, is_query=True)
         
         where_filter = None
         if platform_filter:

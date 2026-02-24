@@ -1,11 +1,11 @@
 """
-Campaign Route — LangChain RAG Content Generation
+Campaign Route — Gemini 2.5 Flash RAG Content Generation
 
 POST /campaign/create
   - Accepts brand_id, icp, tone, description, content_types, template_type
   - Performs semantic search on campaign description (RAG) via ChromaDB
-  - Runs the selected LangChain prompt template through Llama3 (ChatOllama)
-  - Returns strict JSON: canonical_post + carousel + video_script + tags
+  - Generates a 30-day content calendar using Gemini 2.5 Flash
+  - Returns strict JSON with daily content assignments
 """
 
 from fastapi import APIRouter, HTTPException
@@ -13,7 +13,6 @@ from pydantic import BaseModel, Field
 from typing import List, Literal
 from services.db_service import get_connection
 from agents.content_agent import ContentAgent
-from services.image_service import image_service
 import json
 
 router = APIRouter()
@@ -73,14 +72,16 @@ def create_campaign(data: CampaignCreate):
                 data.tone,
                 data.description,
                 ",".join(data.content_types),
-                "draft",
+                "generating",
             ),
         )
         campaign_id = cur.fetchone()["id"]
         conn.commit()
 
+        print(f"[campaign] Generating 30-day content calendar for '{company_name}'...")
+
         agent = get_agent()
-        generated_content = agent.generate(
+        monthly_content = agent.generate_monthly(
             brand=company_name,
             icp=data.icp,
             tone=data.tone,
@@ -89,50 +90,26 @@ def create_campaign(data: CampaignCreate):
             template_type=data.template_type,
         )
 
-        filtered_content = {
-            "template_type": generated_content.get("template_type"),
-            "tags":          generated_content.get("tags", []),
-        }
-
-        if "image" in data.content_types or "canonical_post" in data.content_types:
-            filtered_content["canonical_post"] = generated_content.get("canonical_post", "")
-            img_url = image_service.generate_image(generated_content.get("visual_direction", data.description))
-            filtered_content["image_url"] = img_url
-            generated_content["image_url"] = img_url # Keep sync with full object
-
-        if "carousel" in data.content_types:
-            carousel_data = generated_content.get("carousel", {})
-            slides = carousel_data.get("slides", [])
-            for slide in slides:
-                slide_prompt = slide.get("image_prompt", f"Slide: {slide.get('title')}")
-                slide["image_url"] = image_service.generate_image(slide_prompt)
-            
-            cta_slide = carousel_data.get("cta_slide", {})
-            if cta_slide:
-                cta_prompt = cta_slide.get("image_prompt", "Call to action")
-                cta_slide["image_url"] = image_service.generate_image(cta_prompt)
-                
-            filtered_content["carousel"] = carousel_data
-
-        if "video_script" in data.content_types:
-            filtered_content["video_script"] = generated_content.get("video_script")
-
+        # Store the full monthly calendar in the database
         cur.execute(
             """
             UPDATE campaigns
             SET generated_content = %s, status = %s
             WHERE id = %s;
             """,
-            (json.dumps(generated_content), "completed", campaign_id),
+            (json.dumps(monthly_content), "completed", campaign_id),
         )
         conn.commit()
+
+        print(f"[campaign] 30-day calendar saved. Total days: {monthly_content.get('total_days', 0)}")
 
         return {
             "success": True,
             "campaign_id": campaign_id,
             "company": company_name,
             "template_type": data.template_type,
-            "generated_content": filtered_content,
+            "total_days": monthly_content.get("total_days", 0),
+            "generated_content": monthly_content,
         }
 
     except Exception as e:
@@ -140,6 +117,51 @@ def create_campaign(data: CampaignCreate):
         print(f"[campaign] Error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+    finally:
+        cur.close()
+        conn.close()
+
+
+@router.get("/campaign/{campaign_id}")
+def get_campaign(campaign_id: int):
+    """Fetch an existing campaign by ID, including its 30-day generated content."""
+    conn = get_connection()
+    cur = conn.cursor()
+    
+    try:
+        cur.execute(
+            """
+            SELECT c.*, b.company_name 
+            FROM campaigns c
+            JOIN brands b ON c.brand_id = b.id
+            WHERE c.id = %s
+            """,
+            (campaign_id,)
+        )
+        campaign = cur.fetchone()
+        
+        if not campaign:
+            raise HTTPException(status_code=404, detail="Campaign not found")
+            
+        return {
+            "success": True,
+            "campaign": {
+                "id": campaign["id"],
+                "company_name": campaign["company_name"],
+                "icp": campaign["icp"],
+                "tone": campaign["tone"],
+                "description": campaign["description"],
+                "status": campaign["status"],
+                "generated_content": campaign["generated_content"],
+                "created_at": campaign["created_at"].isoformat() if campaign["created_at"] else None
+            }
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[campaign] Fetch Error: {e}")
+        raise HTTPException(status_code=500, detail="Database error occurred")
     finally:
         cur.close()
         conn.close()

@@ -23,7 +23,7 @@ def publish_to_telegram(req: PublishRequest):
         content_type = req.content_type
         data = req.data
         
-        if content_type == "canonical":
+        if content_type == "canonical" or content_type == "canonical_post" or content_type == "image":
             text = data.get("canonical_post", "No text provided.")
             image_url = _to_local_path(data.get("image_url"))
             tags = data.get("tags", [])
@@ -49,7 +49,7 @@ def publish_to_telegram(req: PublishRequest):
                 caption_parts.append(f"• {slide.get('title', '')}")
                 if "image_url" in slide and slide["image_url"]:
                     image_urls.append(_to_local_path(slide["image_url"]))
-            if "image_url" in cta and cta["image_url"]:
+            if cta and "image_url" in cta and cta["image_url"]:
                 image_urls.append(_to_local_path(cta["image_url"]))
                 
             caption = "\n".join(caption_parts)

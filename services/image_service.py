@@ -1,63 +1,66 @@
-import os
-import requests
-import uuid
-import time
-from pathlib import Path
+"""
+Image Service — Gemini 2.5 Flash Image Generation
+Uses Google's Gemini API for text-to-image generation.
+"""
 
-HUGGINGFACEHUB_API_TOKEN = os.getenv("HUGGINGFACEHUB_API_TOKEN")
-MODEL_ID = "stabilityai/stable-diffusion-xl-base-1.0"
-API_URL = f"https://api-inference.huggingface.co/models/{MODEL_ID}"
-ROUTER_URL = f"https://router.huggingface.co/hf-inference/models/{MODEL_ID}"
+import os
+import uuid
+from pathlib import Path
+from google import genai
+from google.genai import types
+
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+
 
 class ImageService:
     def __init__(self):
-        if not HUGGINGFACEHUB_API_TOKEN:
-            print("[ImageService] WARNING: HUGGINGFACEHUB_API_TOKEN not found in environment.")
-        
+        if not GOOGLE_API_KEY:
+            print("[ImageService] WARNING: GOOGLE_API_KEY not found in environment.")
+
         self.output_dir = Path("static/generated_images")
         self.output_dir.mkdir(parents=True, exist_ok=True)
-        
-        self.headers = {"Authorization": f"Bearer {HUGGINGFACEHUB_API_TOKEN}"}
+
+        self.client = genai.Client(api_key=GOOGLE_API_KEY) if GOOGLE_API_KEY else None
 
     def generate_image(self, prompt: str) -> str:
         """
-        Generates an image via HF Inference API and saves it to static folder.
+        Generates an image via Gemini 2.5 Flash Image API and saves it to static folder.
         Returns the path relative to the backend root.
         """
-        if not HUGGINGFACEHUB_API_TOKEN:
-            print("[ImageService] Skipping generation: API token missing.")
+        if not self.client:
+            print("[ImageService] Skipping generation: GOOGLE_API_KEY missing.")
             return ""
 
-        payload = {
-            "inputs": prompt,
-            "options": {"wait_for_model": True}
-        }
+        print(f"[ImageService] Generating image: {prompt[:60]}...")
 
-        print(f"[ImageService] Requesting image for prompt: {prompt[:50]}...")
-        
         try:
-            response = requests.post(API_URL, headers=self.headers, json=payload, timeout=60)
-            
-            if response.status_code == 410:
-                print("[ImageService] 410 Gone, trying router endpoint...")
-                response = requests.post(ROUTER_URL, headers=self.headers, json=payload, timeout=60)
+            response = self.client.models.generate_content(
+                model="gemini-2.5-flash-image",
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    response_modalities=["IMAGE", "TEXT"],
+                ),
+            )
 
-            if response.status_code != 200:
-                print(f"[ImageService] API Error ({response.status_code}): {response.text}")
-                return ""
+            # Extract image from response parts
+            for part in response.candidates[0].content.parts:
+                if part.inline_data is not None:
+                    image = part.as_image()
 
-            filename = f"img_{uuid.uuid4().hex[:8]}.png"
-            filepath = self.output_dir / filename
-            
-            with open(filepath, "wb") as f:
-                f.write(response.content)
-            
-            print(f"[ImageService] Image saved to {filepath}")
-            
-            return f"/static/generated_images/{filename}"
+                    filename = f"img_{uuid.uuid4().hex[:8]}.png"
+                    filepath = self.output_dir / filename
+
+                    image.save(str(filepath))
+                    print(f"[ImageService] Image saved to {filepath}")
+
+                    return f"/static/generated_images/{filename}"
+
+            print("[ImageService] No image in response.")
+            return ""
 
         except Exception as e:
-            print(f"[ImageService] Exception during generation: {e}")
+            print(f"[ImageService] Error: {e}")
             return ""
+
 
 image_service = ImageService()
