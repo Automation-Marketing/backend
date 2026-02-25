@@ -16,13 +16,12 @@ class VectorDB:
     Manages storage and retrieval of social media posts.
     """
     
-    def __init__(self, persist_directory: str = "./chroma_db"):
+    def __init__(self, persist_directory: str = "./data/chroma_db"):
         """Initialize ChromaDB with persistent storage."""
         self.client = chromadb.PersistentClient(
             path=persist_directory,
             settings=Settings(anonymized_telemetry=False)
         )
-        # Using Gemini instead of Ollama
         api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
         self.genai_client = genai.Client(api_key=api_key)
         self.embedding_model = "gemini-embedding-001"

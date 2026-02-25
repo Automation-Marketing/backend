@@ -5,9 +5,9 @@ import sys
 
 sys.path.append(str(Path(__file__).parent))
 
-from instagram_service import scrape_instagram
-from linkedin_service import scrape_linkedin
-from twitter_service import get_twitter_data
+from app.domain.publishing.instagram_service import scrape_instagram
+from app.domain.publishing.linkedin_service import scrape_linkedin
+from app.domain.publishing.twitter_service import get_twitter_data
 
 
 class ScrapingOrchestrator:

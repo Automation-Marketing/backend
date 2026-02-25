@@ -1,7 +1,7 @@
 import asyncio
 from playwright.async_api import async_playwright
 import json
-from stealth_browser import create_stealth_browser, create_stealth_context, create_stealth_page
+from app.utils.stealth_browser import create_stealth_browser, create_stealth_context, create_stealth_page
 
 
 async def get_twitter_data(username: str = "elonmusk"):
@@ -43,14 +43,12 @@ async def get_twitter_data(username: str = "elonmusk"):
                 await browser.close()
                 raise
 
-            # Dismiss login modal / popups that Twitter shows
             print("2.5️ Dismissing any login popups...")
             try:
                 for _ in range(3):
                     await page.keyboard.press("Escape")
                     await page.wait_for_timeout(500)
 
-                # Try clicking common dismiss buttons
                 dismiss_selectors = [
                     '[data-testid="xMigrationBottomBar"] button',
                     '[role="button"][aria-label="Close"]',
@@ -72,7 +70,6 @@ async def get_twitter_data(username: str = "elonmusk"):
             except Exception as e:
                 print(f"Modal dismiss: {e}\n")
 
-            # Wait for tweets to render
             print("2.6️ Waiting for tweets to render...")
             try:
                 await page.wait_for_selector("article", timeout=15000)
@@ -82,7 +79,6 @@ async def get_twitter_data(username: str = "elonmusk"):
                 try:
                     await page.reload(timeout=60000, wait_until="domcontentloaded")
                     await page.wait_for_timeout(3000)
-                    # Dismiss popups again
                     for _ in range(3):
                         await page.keyboard.press("Escape")
                         await page.wait_for_timeout(500)
@@ -98,14 +94,12 @@ async def get_twitter_data(username: str = "elonmusk"):
 
             try:
                 for i in range(max_scrolls):
-                    # Dismiss any popup that might appear during scrolling
                     if i % 5 == 0 and i > 0:
                         try:
                             await page.keyboard.press("Escape")
                         except:
                             pass
 
-                    # Extract tweets from currently loaded articles
                     articles = await page.query_selector_all("article")
                     old_count = len(tweets)
 
@@ -128,18 +122,14 @@ async def get_twitter_data(username: str = "elonmusk"):
                         print("   Target reached!")
                         break
 
-                    # Check if we got new tweets this round
                     if len(tweets) == old_count:
                         no_new_count += 1
                     else:
                         no_new_count = 0
 
-                    # Only stop if no new tweets after many consecutive scrolls
                     if no_new_count >= 5:
                         print(f"   No new tweets after {no_new_count} consecutive scrolls, stopping...")
                         break
-
-                    # Scroll down
                     await page.evaluate("window.scrollBy(0, 800)")
                     await page.wait_for_timeout(2000)
 

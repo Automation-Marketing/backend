@@ -2,11 +2,11 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Optional
 
-from services.db_service import get_connection
-from services.company_resolver import CompanyResolver
-from services.scraping_orchestrator import ScrapingOrchestrator
-from services.text_processor import TextProcessor
-from services.vector_db import VectorDB
+from app.utils.db_service import get_connection
+from app.domain.brand.company_resolver import CompanyResolver
+from app.domain.brand.scraping_orchestrator import ScrapingOrchestrator
+from app.utils.text_processor import TextProcessor
+from app.utils.vector_db import VectorDB
 
 router = APIRouter()
 

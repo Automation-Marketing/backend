@@ -17,7 +17,7 @@ class ImageService:
         if not GOOGLE_API_KEY:
             print("[ImageService] WARNING: GOOGLE_API_KEY not found in environment.")
 
-        self.output_dir = Path("static/generated_images")
+        self.output_dir = Path("data/media/generated_images")
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
         self.client = genai.Client(api_key=GOOGLE_API_KEY) if GOOGLE_API_KEY else None
@@ -42,7 +42,6 @@ class ImageService:
                 ),
             )
 
-            # Extract image from response parts
             for part in response.candidates[0].content.parts:
                 if part.inline_data is not None:
                     image = part.as_image()

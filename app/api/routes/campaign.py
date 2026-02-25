@@ -11,8 +11,8 @@ POST /campaign/create
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 from typing import List, Literal
-from services.db_service import get_connection
-from agents.content_agent import ContentAgent
+from app.utils.db_service import get_connection
+from app.agents.content_agent import ContentAgent
 import json
 
 router = APIRouter()
@@ -90,7 +90,6 @@ def create_campaign(data: CampaignCreate):
             template_type=data.template_type,
         )
 
-        # Store the full monthly calendar in the database
         cur.execute(
             """
             UPDATE campaigns

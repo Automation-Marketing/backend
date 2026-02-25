@@ -10,14 +10,12 @@ import sys
 from pathlib import Path
 from playwright.async_api import async_playwright
 
-# Add parent dir so we can import stealth_browser
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from stealth_browser import create_stealth_browser, create_stealth_context, create_stealth_page, STEALTH_ARGS, DEFAULT_USER_AGENT
+from app.utils.stealth_browser import create_stealth_browser, create_stealth_context, create_stealth_page, STEALTH_ARGS, DEFAULT_USER_AGENT
 
 
 async def save_session():
     async with async_playwright() as p:
-        # Use stealth args even during login so LinkedIn doesn't flag the session
         browser = await p.chromium.launch(
             headless=False,
             args=STEALTH_ARGS
@@ -36,8 +34,6 @@ async def save_session():
         print("Waiting for you to log in...")
         print("=" * 50)
 
-        # Wait until the URL changes away from login page (means user logged in)
-        # Check every 2 seconds for up to 120 seconds
         for i in range(60):
             await page.wait_for_timeout(2000)
             current_url = page.url
@@ -50,10 +46,9 @@ async def save_session():
         else:
             print("\nTimeout after 120 seconds. Saving session anyway...")
 
-        # Wait a bit more for everything to load
         await page.wait_for_timeout(3000)
 
-        base_dir = Path(__file__).resolve().parent.parent  # Go up to backend/services
+        base_dir = Path(__file__).resolve().parent.parent 
         session_path = base_dir / "session_storage" / "linkedin_session.json"
         session_path.parent.mkdir(parents=True, exist_ok=True)
         

@@ -16,8 +16,6 @@ _SYSTEM_PREAMBLE = (
     "Follow the schema exactly."
 )
 
-# --- MODULAR SCHEMA PARTS (single content) ---
-
 _SCHEMA_BASE = """\
 Return ONLY this JSON (no other text):
 {{
@@ -75,9 +73,6 @@ def _build_dynamic_schema(template_type: str, content_types: list[str]) -> str:
 
     schema_parts.append(_SCHEMA_CLOSE)
     return "".join(schema_parts)
-
-
-# --- TEMPLATE DEFINITIONS ---
 
 _EDUCATIONAL_HUMAN_BASE = """\
 Brand: {brand}
@@ -141,10 +136,6 @@ def get_template_for_type(template_type: str, content_types: list[str]) -> ChatP
         ("human", full_human_prompt),
     ])
 
-
-# ============================================================
-# MONTHLY CONTENT CALENDAR TEMPLATES
-# ============================================================
 
 _MONTHLY_SYSTEM = (
     "You are StoryWeaver, an expert social-media content strategist. "
@@ -222,7 +213,6 @@ def get_monthly_template(
     Content types cycle across days.
     Returns: (ChatPromptTemplate, day_schema_str)
     """
-    # Select strategy text
     if template_type == "educational":
         strategy = "Educational - lead with surprising insights, actionable tips, transformation + CTA."
     elif template_type == "problem_solution":
@@ -232,7 +222,6 @@ def get_monthly_template(
     else:
         strategy = "Educational."
 
-    # Build day assignments and schema
     day_assignments_lines = []
     day_schema_lines = []
 

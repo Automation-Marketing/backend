@@ -16,14 +16,11 @@ import random
 from playwright.async_api import async_playwright, Playwright, Browser, BrowserContext
 from playwright_stealth import Stealth
 
-# Shared Stealth instance
 _stealth = Stealth()
 
-# Fixed user agent — MUST be consistent between login and scraping sessions
-# LinkedIn checks user agent consistency; rotating it invalidates sessions
+
 DEFAULT_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
 
-# Anti-detection browser launch arguments
 STEALTH_ARGS = [
     "--disable-blink-features=AutomationControlled",
     "--disable-dev-shm-usage",
@@ -78,7 +75,6 @@ async def create_stealth_page(context: BrowserContext):
     """
     Create a new page with playwright-stealth v2 evasions applied.
     """
-    # Apply stealth init scripts to the context so every page gets them
     await _stealth.apply_stealth_async(context)
     page = await context.new_page()
     return page

@@ -3,7 +3,7 @@ import json
 from pathlib import Path
 from playwright.async_api import async_playwright
 from bs4 import BeautifulSoup
-from stealth_browser import create_stealth_browser, create_stealth_context, create_stealth_page
+from app.utils.stealth_browser import create_stealth_browser, create_stealth_context, create_stealth_page
 
 COMPANY_URL = "https://www.linkedin.com/company/odoo/"
 LIMIT = 20
@@ -55,7 +55,6 @@ async def scrape_linkedin(company_url):
                 await browser.close()
                 raise
 
-            # First validate the session by visiting the feed
             try:
                 print(f"3️ Validating session...")
                 await page.goto("https://www.linkedin.com/feed/", timeout=60000, wait_until="domcontentloaded")
@@ -66,7 +65,6 @@ async def scrape_linkedin(company_url):
                 print(f"   Page title: {page_title}")
                 print(f"   Current URL: {current_url}")
                 
-                # Check for ANY sign of not being logged in
                 is_logged_out = (
                     "login" in current_url.lower()
                     or "authwall" in current_url.lower()
@@ -96,7 +94,6 @@ async def scrape_linkedin(company_url):
                 await browser.close()
                 raise
 
-            # Now navigate to the actual company page
             try:
                 print(f"4️ Navigating to company page: {company_url}")
                 await page.goto(company_url, timeout=60000, wait_until="domcontentloaded")
@@ -152,7 +149,6 @@ async def scrape_linkedin(company_url):
                 print("8️ Finding posts...")
                 posts = []
                 
-                # Try multiple selectors — LinkedIn changes these frequently
                 post_selectors = [
                     "div.feed-shared-update-v2",
                     "div[data-urn*='activity']",
@@ -171,7 +167,6 @@ async def scrape_linkedin(company_url):
                 print(f"   Found {len(post_blocks)} post blocks (selector: {used_selector or 'none matched'})")
                 
                 if len(post_blocks) == 0:
-                    # Fallback: try extracting posts using Playwright selectors on live DOM
                     print("   Trying Playwright live DOM selectors...")
                     
                     pw_selectors = [

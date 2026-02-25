@@ -15,8 +15,8 @@ from typing import Optional
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.output_parsers import JsonOutputParser
 
-from agents.prompt_templates import get_template_for_type, get_monthly_template
-from services.vector_db import VectorDB
+from app.agents.prompt_templates import get_template_for_type, get_monthly_template
+from app.utils.vector_db import VectorDB
 
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 GEMINI_MODEL = "gemini-2.5-flash"
@@ -25,7 +25,6 @@ LLM_TIMEOUT = int(os.getenv("LLM_TIMEOUT", "600"))
 
 VALID_TEMPLATE_TYPES = {"educational", "problem_solution", "trust_story"}
 
-# Batch configuration for monthly generation
 DAYS_PER_BATCH = 5
 TOTAL_DAYS = 30
 
@@ -125,10 +124,6 @@ class ContentAgent:
 
         raise ValueError(f"Could not parse model output as JSON:\n{raw[:500]}")
 
-    # =========================================================
-    # Single content generation (original)
-    # =========================================================
-
     def generate(
         self,
         brand: str,
@@ -202,10 +197,6 @@ class ContentAgent:
             )
             return self._extract_json(raw_text)
 
-    # =========================================================
-    # Monthly content calendar generation (NEW)
-    # =========================================================
-
     def generate_monthly(
         self,
         brand: str,
@@ -238,7 +229,6 @@ class ContentAgent:
 
         all_days = []
 
-        # Generate in batches of DAYS_PER_BATCH
         num_batches = (TOTAL_DAYS + DAYS_PER_BATCH - 1) // DAYS_PER_BATCH
 
         for batch_idx in range(num_batches):
@@ -247,7 +237,6 @@ class ContentAgent:
 
             print(f"\n[ContentAgent] === Batch {batch_idx + 1}/{num_batches}: Days {day_start}-{day_end} ===")
 
-            # Build day assignments for this batch
             day_assignments_lines = []
             for day in range(day_start, day_end + 1):
                 ct_index = (day - 1) % len(content_types)
@@ -287,7 +276,6 @@ class ContentAgent:
                     executor.shutdown(wait=False)
                     raise TimeoutError(f"Batch {batch_idx + 1} timed out.")
                 except Exception as e:
-                    # Fallback: try raw parse
                     print(f"[ContentAgent] Parse failed ({e}), trying raw fallback...")
                     raw_chain = prompt | self.llm
                     raw_future = executor.submit(raw_chain.invoke, invoke_inputs)
@@ -305,7 +293,6 @@ class ContentAgent:
                     )
                     batch_result = self._extract_json(raw_text)
 
-                # Extract days from batch result
                 batch_days = batch_result.get("days", [])
                 if not batch_days and isinstance(batch_result, list):
                     batch_days = batch_result
@@ -319,7 +306,6 @@ class ContentAgent:
 
             except Exception as e:
                 print(f"[ContentAgent] Batch {batch_idx + 1} FAILED: {e}")
-                # Add placeholder days for failed batch
                 for day in range(day_start, day_end + 1):
                     all_days.append({
                         "day": day,

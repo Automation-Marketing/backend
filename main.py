@@ -7,43 +7,25 @@ import asyncio
 import os
 import requests
 
-# Import our services
-from services.company_resolver import CompanyResolver
-from services.scraping_orchestrator import ScrapingOrchestrator
-from services.text_processor import TextProcessor
-from services.vector_db import VectorDB
+from app.domain.brand.company_resolver import CompanyResolver
+from app.domain.brand.scraping_orchestrator import ScrapingOrchestrator
+from app.utils.text_processor import TextProcessor
+from app.utils.vector_db import VectorDB
 
-# Import routers
-from routes.brand import router as brand_router
-from routes.campaign import router as campaign_router
-from routes.publish import router as publish_router
+from app.api.routes.brand import router as brand_router
+from app.api.routes.campaign import router as campaign_router
+from app.api.routes.publish import router as publish_router
 
 app = FastAPI(title="Social Media Marketing Automation API")
 
-# Register routers
 app.include_router(brand_router)
 app.include_router(campaign_router)
 app.include_router(publish_router)
-
-OLLAMA_URL = os.getenv("OLLAMA_HOST_URL", "http://localhost:11434/api/generate")
 
 @app.get("/")
 def read_root():
     return {"message": "Backend is running"}
 
-@app.get("/test-llm")
-def test_llm():
-    payload = {
-        "model": "llama3",
-        "prompt": "Say hello in one sentence.",
-        "stream": False
-    }
-
-    response = requests.post(OLLAMA_URL, json=payload)
-    return response.json()
-
-
-# CORS middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -52,11 +34,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Mount static files
-os.makedirs("static", exist_ok=True)
-app.mount("/static", StaticFiles(directory="static"), name="static")
+os.makedirs("data/media", exist_ok=True)
+app.mount("/static", StaticFiles(directory="data/media"), name="static")
 
-# Initialize services
 company_resolver = CompanyResolver()
 text_processor = TextProcessor()
 vector_db = VectorDB()
@@ -86,7 +66,6 @@ async def scrape_company(request: ScrapeCompanyRequest):
         print(f"Starting pipeline for: {request.company_name}")
         print(f"{'='*60}\n")
 
-        # Step 1: Resolve social media handles
         print("Step 1: Resolving social media handles...")
         handles = company_resolver.resolve(
             request.company_name,
@@ -103,7 +82,6 @@ async def scrape_company(request: ScrapeCompanyRequest):
 
         print(f"Resolved handles: {handles}\n")
 
-        # Step 2: Scrape all platforms
         print("Step 2: Scraping social media platforms...")
         scraped_data = await ScrapingOrchestrator.scrape_all_platforms(
             instagram_handle=handles.get("instagram"),
@@ -114,7 +92,6 @@ async def scrape_company(request: ScrapeCompanyRequest):
         if not scraped_data:
             raise HTTPException(status_code=500, detail="Failed to scrape any platform")
 
-        # Log summary
         print("\nSCRAPED DATA SUMMARY:")
         for platform, data in scraped_data.items():
             if platform == "instagram":
@@ -127,18 +104,15 @@ async def scrape_company(request: ScrapeCompanyRequest):
                 posts = []
             print(f"  {platform}: {len(posts)} posts")
 
-        # Step 3: Process and chunk
         print("\nStep 3: Processing and chunking text...")
         chunks = text_processor.process_all_platforms(scraped_data, request.company_name)
 
         if not chunks:
             raise HTTPException(status_code=500, detail="No valid content found to process")
 
-        # Step 4: Store in vector DB
         print("\nStep 4: Generating embeddings and storing in vector DB...")
         vector_db.add_posts(request.company_name, chunks)
 
-        # Step 5: Stats
         stats = vector_db.get_company_stats(request.company_name)
 
         print(f"\nPipeline complete for {request.company_name}!")

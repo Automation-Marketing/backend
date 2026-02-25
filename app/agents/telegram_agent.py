@@ -37,7 +37,6 @@ class TelegramAgent:
         self._ensure_api_ready()
         
         if photo_path.startswith("http") and "localhost" not in photo_path:
-            # Fallback for public URLs (not used in our current setup)
             payload = {
                 "chat_id": TELEGRAM_CHAT_ID,
                 "photo": photo_path,
@@ -46,7 +45,6 @@ class TelegramAgent:
             }
             res = requests.post(f"{API_URL}/sendPhoto", json=payload)
         else:
-            # Upload local file
             with open(photo_path, 'rb') as f:
                 payload = {
                     "chat_id": TELEGRAM_CHAT_ID,
@@ -74,7 +72,6 @@ class TelegramAgent:
             for i, path in enumerate(media_paths):
                 file_name = f"file{i}"
                 
-                # Check if it's a valid local path
                 if not path.startswith("http"):
                     f = open(path, 'rb')
                     open_files.append(f)

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, HttpUrl
 from typing import Optional, Dict, Any, List
-from agents.telegram_agent import TelegramAgent
+from app.agents.telegram_agent import TelegramAgent
 
 router = APIRouter()
 telegram_agent = TelegramAgent()
@@ -13,7 +13,7 @@ class PublishRequest(BaseModel):
 def _to_local_path(url: str) -> str:
     if not url: return url
     if "/static/" in url:
-        return "static/" + url.split("/static/")[-1]
+        return "data/media/" + url.split("/static/")[-1]
     return url
 
 @router.post("/publish/telegram")
@@ -43,8 +43,7 @@ def publish_to_telegram(req: PublishRequest):
             
             image_urls = []
             caption_parts = [f"<b>{title}</b>\n"]
-            
-            # Extract slide images and texts
+
             for slide in slides:
                 caption_parts.append(f"• {slide.get('title', '')}")
                 if "image_url" in slide and slide["image_url"]:

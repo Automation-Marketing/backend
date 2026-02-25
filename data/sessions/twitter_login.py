@@ -4,7 +4,7 @@ from playwright.async_api import async_playwright
 
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from services.stealth_browser import create_stealth_browser, create_stealth_context, create_stealth_page
+from app.utils.stealth_browser import create_stealth_browser, create_stealth_context, create_stealth_page
 
 
 async def save_session():
@@ -30,7 +30,7 @@ async def save_session():
         
         await page.wait_for_timeout(60000)
 
-        base_dir = Path(__file__).resolve().parent.parent  # Go up to backend/services
+        base_dir = Path(__file__).resolve().parent.parent 
         session_path = base_dir / "session_storage" / "twitter_session.json"
         session_path.parent.mkdir(parents=True, exist_ok=True)
         
