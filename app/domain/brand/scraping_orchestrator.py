@@ -5,9 +5,9 @@ import sys
 
 sys.path.append(str(Path(__file__).parent))
 
-from app.domain.publishing.instagram_service import scrape_instagram
-from app.domain.publishing.linkedin_service import scrape_linkedin
-from app.domain.publishing.twitter_service import get_twitter_data
+from app.domain.scraping.instagram_service import scrape_instagram
+from app.domain.scraping.linkedin_service import scrape_linkedin
+from app.domain.scraping.twitter_service import get_twitter_data
 
 
 class ScrapingOrchestrator:
@@ -55,7 +55,7 @@ class ScrapingOrchestrator:
     @staticmethod
     async def scrape_all_platforms(
         instagram_handle: Optional[str] = None,
-        linkedin_url: Optional[str] = None,
+        linkedin_handle: Optional[str] = None,
         twitter_handle: Optional[str] = None
     ) -> Dict:
         """
@@ -63,8 +63,8 @@ class ScrapingOrchestrator:
         
         Args:
             instagram_handle: Instagram username
-            linkedin_url: Full LinkedIn company URL
-            twitter_handle: Twitter username (without @)
+            linkedin_handle: LinkedIn company handle
+            twitter_handle: Twitter username
             
         Returns:
             Dictionary with results from all platforms
@@ -81,7 +81,8 @@ class ScrapingOrchestrator:
             tasks.append(ScrapingOrchestrator.scrape_instagram_safe(instagram_url))
             platform_keys.append("instagram")
         
-        if linkedin_url:
+        if linkedin_handle:
+            linkedin_url = f"https://www.linkedin.com/company/{linkedin_handle}/"
             tasks.append(ScrapingOrchestrator.scrape_linkedin_safe(linkedin_url))
             platform_keys.append("linkedin")
         

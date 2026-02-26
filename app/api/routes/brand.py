@@ -4,22 +4,17 @@ from typing import Optional
 
 from app.utils.db_service import get_connection
 from app.domain.brand.company_resolver import CompanyResolver
-from app.domain.brand.scraping_orchestrator import ScrapingOrchestrator
-from app.utils.text_processor import TextProcessor
-from app.utils.vector_db import VectorDB
 
 router = APIRouter()
 
 company_resolver = CompanyResolver()
-text_processor = TextProcessor()
-vector_db = VectorDB()
 
 
 class BrandCreate(BaseModel):
     company_name: str
     instagram_handle: Optional[str] = None
     twitter_handle: Optional[str] = None
-    linkedin_url: Optional[str] = None
+    linkedin_handle: Optional[str] = None
 
 
 @router.post("/brand/create")
@@ -35,13 +30,15 @@ async def create_brand(data: BrandCreate):
     cur = conn.cursor()
 
     try:
+        linkedin_handle_clean = data.linkedin_handle.strip() if data.linkedin_handle else data.company_name.lower().replace(' ', '-')
+
         cur.execute(
             """
             INSERT INTO brands (company_name, instagram_handle, twitter_handle, linkedin_url)
             VALUES (%s, %s, %s, %s)
             RETURNING id;
             """,
-            (data.company_name, data.instagram_handle, data.twitter_handle, data.linkedin_url)
+            (data.company_name, data.instagram_handle, data.twitter_handle, linkedin_handle_clean)
         )
         brand_id = cur.fetchone()["id"]
         conn.commit()
@@ -59,69 +56,21 @@ async def create_brand(data: BrandCreate):
         handles = company_resolver.resolve(
             data.company_name,
             instagram=data.instagram_handle,
-            linkedin=data.linkedin_url,
+            linkedin=data.linkedin_handle,
             twitter=data.twitter_handle
         )
         print(f"[brand/create] Resolved handles: {handles}")
-
-        if not any(handles.values()):
-            return {
-                "success": True,
-                "brand_id": brand_id,
-                "company_name": data.company_name,
-                "message": "Brand saved. No social handles provided — scraping skipped.",
-                "platforms_scraped": [],
-                "chunks_created": 0
-            }
-
-        print(f"[brand/create] Starting scraping for '{data.company_name}'...")
-        scraped_data = await ScrapingOrchestrator.scrape_all_platforms(
-            instagram_handle=handles.get("instagram") or None,
-            linkedin_url=handles.get("linkedin") or None,
-            twitter_handle=handles.get("twitter") or None
-        )
-
-        if not scraped_data:
-            return {
-                "success": True,
-                "brand_id": brand_id,
-                "company_name": data.company_name,
-                "message": "Brand saved. Scraping returned no data.",
-                "platforms_scraped": [],
-                "chunks_created": 0
-            }
-
-        print(f"[brand/create] Processing scraped content...")
-        chunks = text_processor.process_all_platforms(scraped_data, data.company_name)
-
-        if not chunks:
-            return {
-                "success": True,
-                "brand_id": brand_id,
-                "company_name": data.company_name,
-                "message": "Brand saved. No valid content found to embed.",
-                "platforms_scraped": list(scraped_data.keys()),
-                "chunks_created": 0
-            }
-
-        print(f"[brand/create] Embedding {len(chunks)} chunks into vector DB...")
-        vector_db.add_posts(data.company_name, chunks)
-
-        stats = vector_db.get_company_stats(data.company_name)
-        print(f"[brand/create] Done! Total posts in vector DB: {stats['total_posts']}")
 
         return {
             "success": True,
             "brand_id": brand_id,
             "company_name": data.company_name,
-            "message": f"Brand onboarded successfully with {len(chunks)} chunks embedded.",
-            "platforms_scraped": list(scraped_data.keys()),
-            "chunks_created": len(chunks),
-            "total_posts_in_db": stats["total_posts"]
+            "message": "Brand and social handles saved successfully. Scraping will occur during campaign creation.",
+            "handles": handles
         }
 
     except HTTPException:
         raise
     except Exception as e:
         print(f"[brand/create] Pipeline error: {e}")
-        raise HTTPException(status_code=500, detail=f"Scraping/embedding pipeline failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Brand onboarding failed: {str(e)}")

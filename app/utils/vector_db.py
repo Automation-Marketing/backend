@@ -150,12 +150,27 @@ class VectorDB:
             ids.append(f"{company}_{idx}_{hash(text)}")
         
         if documents:
-            collection.add(
-                documents=documents,
-                embeddings=embeddings,
-                metadatas=metadatas,
-                ids=ids
-            )
+            try:
+                collection.add(
+                    documents=documents,
+                    embeddings=embeddings,
+                    metadatas=metadatas,
+                    ids=ids
+                )
+            except Exception as e:
+                if "dimension" in str(e).lower() or "expected" in str(e).lower():
+                    print(f"Dimension mismatch error detected: {e}")
+                    print(f"Deleting incompatible collection for {company} and recreating it...")
+                    self.delete_company(company)
+                    collection = self.get_or_create_collection(company)
+                    collection.add(
+                        documents=documents,
+                        embeddings=embeddings,
+                        metadatas=metadatas,
+                        ids=ids
+                    )
+                else:
+                    raise
             print(f"Successfully added {len(new_chunks)} new posts!")
             print(f"Total posts in database: {collection.count()}")
     
