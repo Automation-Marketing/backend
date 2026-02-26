@@ -14,7 +14,9 @@ class BrandCreate(BaseModel):
     company_name: str
     instagram_handle: Optional[str] = None
     twitter_handle: Optional[str] = None
-    linkedin_handle: Optional[str] = None
+    linkedin_url: Optional[str] = None
+    industry: Optional[str] = None
+    region: Optional[str] = None
 
 
 @router.post("/brand/create")
@@ -34,11 +36,11 @@ async def create_brand(data: BrandCreate):
 
         cur.execute(
             """
-            INSERT INTO brands (company_name, instagram_handle, twitter_handle, linkedin_url)
-            VALUES (%s, %s, %s, %s)
+            INSERT INTO brands (company_name, instagram_handle, twitter_handle, linkedin_url, industry, region)
+            VALUES (%s, %s, %s, %s, %s, %s)
             RETURNING id;
             """,
-            (data.company_name, data.instagram_handle, data.twitter_handle, linkedin_handle_clean)
+            (data.company_name, data.instagram_handle, data.twitter_handle, data.linkedin_url, data.industry, data.region)
         )
         brand_id = cur.fetchone()["id"]
         conn.commit()

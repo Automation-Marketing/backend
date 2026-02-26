@@ -34,5 +34,23 @@
     "instagram": "Bonhomiaworld",
     "linkedin": "https://www.linkedin.com/company/Bonhomiaworld/",
     "twitter": "Bonhomiaworld"
+  },
+  "notion": {
+    "company_name": "Notion",
+    "instagram": "notionhq",
+    "linkedin": "https://www.linkedin.com/comp",
+    "twitter": "NotionHQ"
+  },
+  "airbnb": {
+    "company_name": "Airbnb",
+    "instagram": "airbnb",
+    "linkedin": "https://www.linkedin.com/company/airbnb/",
+    "twitter": "airbnb"
+  },
+  "canva": {
+    "company_name": "Canva",
+    "instagram": "canva",
+    "linkedin": "https://www.linkedin.com/company/canva/",
+    "twitter": "canva"
   }
 }

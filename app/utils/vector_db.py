@@ -141,8 +141,20 @@ class VectorDB:
             text = chunk.get("text", "")
             if not text:
                 continue
-                
-            embedding = self._generate_embedding(text)
+            
+            print(f"  Embedding post {idx + 1}/{len(new_chunks)}...", flush=True)
+            try:
+                embedding = self._generate_embedding(text)
+            except Exception as e:
+                print(f"  ⚠ Failed to embed post {idx + 1}: {e}", flush=True)
+                continue
+            
+            print(f"  Embedding post {idx + 1}/{len(new_chunks)}...", flush=True)
+            try:
+                embedding = self._generate_embedding(text)
+            except Exception as e:
+                print(f"  ⚠ Failed to embed post {idx + 1}: {e}", flush=True)
+                continue
             
             documents.append(text)
             embeddings.append(embedding)
@@ -173,6 +185,80 @@ class VectorDB:
                     raise
             print(f"Successfully added {len(new_chunks)} new posts!")
             print(f"Total posts in database: {collection.count()}")
+
+    def add_texts(self, company: str, texts: List[str], metadatas: List[Dict]) -> None:
+        """
+        Add raw texts with metadata to the vector database for a company.
+        Used by campaign_orchestrator to store AI agent outputs.
+        """
+        if not texts or len(texts) != len(metadatas):
+            print("Invalid inputs to add_texts")
+            return
+            
+        collection = self.get_or_create_collection(company)
+        
+        documents = []
+        embeddings = []
+        valid_metadatas = []
+        ids = []
+        
+        for idx, text in enumerate(texts):
+            if not text:
+                continue
+            try:
+                embedding = self._generate_embedding(text)
+                documents.append(text)
+                embeddings.append(embedding)
+                valid_metadatas.append(metadatas[idx])
+                ids.append(f"{company}_ai_{hash(text)}")
+            except Exception as e:
+                print(f"Failed to embed text {idx}: {e}")
+                
+        if documents:
+            collection.add(
+                documents=documents,
+                embeddings=embeddings,
+                metadatas=valid_metadatas,
+                ids=ids
+            )
+            print(f"Successfully added {len(documents)} strategy texts!")
+
+    def add_texts(self, company: str, texts: List[str], metadatas: List[Dict]) -> None:
+        """
+        Add raw texts with metadata to the vector database for a company.
+        Used by campaign_orchestrator to store AI agent outputs.
+        """
+        if not texts or len(texts) != len(metadatas):
+            print("Invalid inputs to add_texts")
+            return
+            
+        collection = self.get_or_create_collection(company)
+        
+        documents = []
+        embeddings = []
+        valid_metadatas = []
+        ids = []
+        
+        for idx, text in enumerate(texts):
+            if not text:
+                continue
+            try:
+                embedding = self._generate_embedding(text)
+                documents.append(text)
+                embeddings.append(embedding)
+                valid_metadatas.append(metadatas[idx])
+                ids.append(f"{company}_ai_{hash(text)}")
+            except Exception as e:
+                print(f"Failed to embed text {idx}: {e}")
+                
+        if documents:
+            collection.add(
+                documents=documents,
+                embeddings=embeddings,
+                metadatas=valid_metadatas,
+                ids=ids
+            )
+            print(f"Successfully added {len(documents)} strategy texts!")
     
     def search(
         self, 

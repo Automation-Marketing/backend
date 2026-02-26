@@ -1,11 +1,11 @@
 """
-Campaign Route — Gemini 2.5 Flash RAG Content Generation
+Campaign Route — Multi-Agent AI Brain + RAG Content Generation
 
 POST /campaign/create
-  - Accepts brand_id, icp, tone, description, content_types, template_type
-  - Performs semantic search on campaign description (RAG) via ChromaDB
+  - Accepts brand_id, product_service, icp, tone, description, content_types, template_type
+  - Runs the 5-agent AI Brain pipeline (Competition, Usecase, Objectives, Audience, Positioning)
   - Generates a 30-day content calendar using Gemini 2.5 Flash
-  - Returns strict JSON with daily content assignments
+  - Returns strict JSON with AI Brain + daily content assignments
 """
 
 from fastapi import APIRouter, HTTPException
@@ -13,8 +13,8 @@ from pydantic import BaseModel, Field
 from typing import List, Literal
 from app.utils.db_service import get_connection
 from app.agents.content_agent import ContentAgent
-from app.agents.orchestrator import graph
 import json
+
 
 router = APIRouter()
 
@@ -29,6 +29,7 @@ def get_agent() -> ContentAgent:
 
 class CampaignCreate(BaseModel):
     brand_id: int
+    product_service: str
     icp: str                            
     tone: str                           
     description: str
@@ -63,12 +64,13 @@ async def create_campaign(data: CampaignCreate):
         cur.execute(
             """
             INSERT INTO campaigns
-                (brand_id, icp, tone, description, content_type, status)
-            VALUES (%s, %s, %s, %s, %s, %s)
+                (brand_id, product_service, icp, tone, description, content_type, status)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
             RETURNING id;
             """,
             (
                 data.brand_id,
+                data.product_service,
                 data.icp,
                 data.tone,
                 data.description,
@@ -79,8 +81,60 @@ async def create_campaign(data: CampaignCreate):
         campaign_id = cur.fetchone()["id"]
         conn.commit()
 
+        print(f"[campaign] Generating AI Brain (5 Agents) for '{company_name}'...")
+        pipeline = CampaignOrchestrator()
+        ai_brain = pipeline.run_pipeline(
+            company_name=company_name,
+            product_service=data.product_service,
+            icp=data.icp,
+            tone=data.tone,
+            description=data.description,
+            campaign_id=campaign_id
+        )
+
+        cur.execute(
+            """
+            UPDATE campaigns
+            SET ai_brain = %s
+            WHERE id = %s;
+            """,
+            (json.dumps(ai_brain), campaign_id),
+        )
+        conn.commit()
+
+        print(f"[campaign] Generating AI Brain (5 Agents) for '{company_name}'...")
+        pipeline = CampaignOrchestrator()
+        ai_brain = pipeline.run_pipeline(
+            company_name=company_name,
+            product_service=data.product_service,
+            icp=data.icp,
+            tone=data.tone,
+            description=data.description,
+            campaign_id=campaign_id
+        )
+
+        cur.execute(
+            """
+            UPDATE campaigns
+            SET ai_brain = %s
+            WHERE id = %s;
+            """,
+            (json.dumps(ai_brain), campaign_id),
+        )
+        conn.commit()
+
         print(f"[campaign] Generating 30-day content calendar for '{company_name}' via LangGraph...")
 
+        agent = get_agent()
+        enhanced_description = f"{data.description}\n\nStrategic Constraints (AI Brain):\n{json.dumps(ai_brain)}"
+        monthly_content = agent.generate_monthly(
+            brand=company_name,
+            icp=data.icp,
+            tone=data.tone,
+            description=enhanced_description,
+            content_types=data.content_types,
+            template_type=data.template_type,
+        )
         config = {"configurable": {"thread_id": str(campaign_id)}}
         initial_state = {
             "brand_id": data.brand_id,
@@ -118,6 +172,7 @@ async def create_campaign(data: CampaignCreate):
             "company": company_name,
             "template_type": data.template_type,
             "total_days": monthly_content.get("total_days", 0),
+            "ai_brain": ai_brain,
             "generated_content": monthly_content,
         }
 
@@ -157,10 +212,12 @@ def get_campaign(campaign_id: int):
             "campaign": {
                 "id": campaign["id"],
                 "company_name": campaign["company_name"],
+                "product_service": campaign["product_service"],
                 "icp": campaign["icp"],
                 "tone": campaign["tone"],
                 "description": campaign["description"],
                 "status": campaign["status"],
+                "ai_brain": campaign["ai_brain"],
                 "generated_content": campaign["generated_content"],
                 "created_at": campaign["created_at"].isoformat() if campaign["created_at"] else None
             }
