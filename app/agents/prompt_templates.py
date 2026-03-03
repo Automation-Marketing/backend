@@ -139,7 +139,7 @@ def get_template_for_type(template_type: str, content_types: list[str]) -> ChatP
 
 _MONTHLY_SYSTEM = (
     "You are StoryWeaver, an expert social-media content strategist. "
-    "You are generating a MONTHLY content calendar. "
+    "You are generating a WEEKLY content calendar. "
     "Each day MUST have UNIQUE, FRESH content — never repeat ideas, angles, or hooks. "
     "Vary the tone subtly across days while staying on-brand. "
     "You ALWAYS reply with ONLY a valid JSON object — no markdown, no explanation."
@@ -154,7 +154,7 @@ Campaign Topic: {description}
 Brand voice reference (past posts):
 {context}
 
-Generate content for Days {day_start} to {day_end} of a 30-day calendar.
+Generate content for Days {day_start} to {day_end} of a 7-day weekly calendar.
 Each day gets a DIFFERENT content piece. The content type for each day is assigned below.
 
 {day_assignments}

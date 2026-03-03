@@ -35,6 +35,7 @@ app.add_middleware(
 )
 
 os.makedirs("data/media", exist_ok=True)
+os.makedirs("data/media/generated", exist_ok=True)
 app.mount("/static", StaticFiles(directory="data/media"), name="static")
 
 company_resolver = CompanyResolver()

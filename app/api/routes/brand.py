@@ -32,7 +32,7 @@ async def create_brand(data: BrandCreate):
     cur = conn.cursor()
 
     try:
-        linkedin_handle_clean = data.linkedin_handle.strip() if data.linkedin_handle else data.company_name.lower().replace(' ', '-')
+        linkedin_handle_clean = data.linkedin_url.strip() if data.linkedin_url else data.company_name.lower().replace(' ', '-')
 
         cur.execute(
             """
@@ -58,7 +58,7 @@ async def create_brand(data: BrandCreate):
         handles = company_resolver.resolve(
             data.company_name,
             instagram=data.instagram_handle,
-            linkedin=data.linkedin_handle,
+            linkedin=data.linkedin_url,
             twitter=data.twitter_handle
         )
         print(f"[brand/create] Resolved handles: {handles}")

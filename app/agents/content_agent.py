@@ -25,8 +25,8 @@ LLM_TIMEOUT = int(os.getenv("LLM_TIMEOUT", "600"))
 
 VALID_TEMPLATE_TYPES = {"educational", "problem_solution", "trust_story"}
 
-DAYS_PER_BATCH = 5
-TOTAL_DAYS = 30
+DAYS_PER_BATCH = 7
+TOTAL_DAYS = 7
 
 
 class ContentAgent:
@@ -46,7 +46,7 @@ class ContentAgent:
             model=GEMINI_MODEL,
             google_api_key=GOOGLE_API_KEY,
             temperature=0.7,
-            max_output_tokens=4096,
+            max_output_tokens=16384,
             timeout=LLM_TIMEOUT,
         )
         self.parser = JsonOutputParser()
@@ -207,9 +207,8 @@ class ContentAgent:
         template_type: str = "educational",
     ) -> dict:
         """
-        Generate a 30-day content calendar.
-        Splits into batches of 5 days, calls LLM for each batch,
-        and merges results into a single calendar.
+        Generate a 7-day weekly content calendar.
+        Calls LLM in a single batch for all 7 days.
 
         Returns:
             {"days": [{"day": 1, "content_type": "...", ...}, ...]}
@@ -313,7 +312,7 @@ class ContentAgent:
                         "error": str(e),
                     })
 
-        print(f"\n[ContentAgent] Monthly calendar complete: {len(all_days)} days generated")
+        print(f"\n[ContentAgent] Weekly calendar complete: {len(all_days)} days generated")
 
         return {
             "template_type": template_type,

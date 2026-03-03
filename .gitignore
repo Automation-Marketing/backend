@@ -201,6 +201,9 @@ cython_debug/
 
 # Local database folder for Chroma
 chroma_db/
+
+# Generated media
+generated/
 .cursorignore
 .cursorindexingignore
 

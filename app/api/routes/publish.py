@@ -27,7 +27,7 @@ def publish_to_telegram(req: PublishRequest):
             text = data.get("canonical_post", "No text provided.")
             image_url = _to_local_path(data.get("image_url"))
             tags = data.get("tags", [])
-            tag_str = " ".join([f"#{tag}" for tag in tags])
+            tag_str = " ".join([f"#{tag.lstrip('#')}" for tag in tags])
             full_caption = f"{text}\n\n{tag_str}" if tags else text
             
             if image_url:
@@ -57,7 +57,7 @@ def publish_to_telegram(req: PublishRequest):
                 
             tags = data.get("tags", [])
             if tags:
-                tag_str = " ".join([f"#{tag}" for tag in tags])
+                tag_str = " ".join([f"#{tag.lstrip('#')}" for tag in tags])
                 caption += f"\n\n{tag_str}"
 
             if image_urls:
@@ -71,7 +71,7 @@ def publish_to_telegram(req: PublishRequest):
             
             tags = data.get("tags", [])
             if tags:
-                tag_str = " ".join([f"#{tag}" for tag in tags])
+                tag_str = " ".join([f"#{tag.lstrip('#')}" for tag in tags])
                 text += f"\n\n{tag_str}"
                 
             result = telegram_agent.send_message(text=text)
