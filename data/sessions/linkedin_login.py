@@ -10,7 +10,7 @@ import sys
 from pathlib import Path
 from playwright.async_api import async_playwright
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 from app.utils.stealth_browser import create_stealth_browser, create_stealth_context, create_stealth_page, STEALTH_ARGS, DEFAULT_USER_AGENT
 
 
@@ -48,8 +48,8 @@ async def save_session():
 
         await page.wait_for_timeout(3000)
 
-        base_dir = Path(__file__).resolve().parent.parent 
-        session_path = base_dir / "session_storage" / "linkedin_session.json"
+        base_dir = Path(__file__).resolve().parent.parent.parent
+        session_path = base_dir / "data" / "session_storage" / "linkedin_session.json"
         session_path.parent.mkdir(parents=True, exist_ok=True)
         
         await context.storage_state(path=str(session_path))

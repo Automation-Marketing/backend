@@ -7,6 +7,7 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 
 from app.agents.content_agent import ContentAgent
 from app.agents.image_generator import ImageGenerator
+from app.agents.video_generator import VideoGenerator
 from app.agents.telegram_agent import TelegramAgent
 from app.agents.competition_agent import CompetitionAgent
 from app.agents.usecase_agent import UsecaseAgent
@@ -226,6 +227,47 @@ def image_gen_node(state: AgentState):
 
 
 # ---------------------------------------------------------------------------
+# Node 3c: Video generation — generate videos from video prompts
+# ---------------------------------------------------------------------------
+def video_gen_node(state: AgentState):
+    """Generates videos for video_script days using their video prompts."""
+    print(f"[Orchestrator] Running video_gen_node for '{state['company_name']}'...")
+
+    generated_content = state.get("generated_content", {})
+    days = generated_content.get("days", [])
+    campaign_id = state.get("campaign_id", 0)
+
+    if not days:
+        print("[Orchestrator] No days to generate videos for.")
+        return {"generated_content": generated_content}
+
+    try:
+        video_gen = VideoGenerator()
+        updated_days = video_gen.generate_for_days(days, campaign_id)
+        generated_content["days"] = updated_days
+        print(f"[Orchestrator] Video generation complete for {len(updated_days)} days.")
+    except Exception as e:
+        print(f"[Orchestrator] Video generation failed (non-fatal): {e}")
+
+    return {"generated_content": generated_content}
+
+
+# ---------------------------------------------------------------------------
+# Router: decide whether to run image_gen or video_gen after content generation
+# ---------------------------------------------------------------------------
+def route_media_generation(state: AgentState) -> str:
+    """Route to image_gen or video_gen based on the content types requested."""
+    content_types = state.get("content_types", [])
+
+    if "video_script" in content_types:
+        print("[Orchestrator] Routing to video_gen_node (video_script detected)")
+        return "video_gen"
+    else:
+        print("[Orchestrator] Routing to image_gen_node (canonical_post / image detected)")
+        return "image_gen"
+
+
+# ---------------------------------------------------------------------------
 # Node 4: Publish to Telegram
 # ---------------------------------------------------------------------------
 def publish_node(state: AgentState):
@@ -265,7 +307,10 @@ def publish_node(state: AgentState):
 def build_orchestrator_graph():
     """Builds and compiles the StateGraph with human-in-the-loop interruption.
 
-    Flow: scrape → ai_brain → generate → (pause) → publish
+    Flow:
+      scrape → ai_brain → generate → [router]
+        ├─ canonical_post/image → image_gen → publish
+        └─ video_script         → video_gen → publish
     """
     builder = StateGraph(AgentState)
 
@@ -273,13 +318,22 @@ def build_orchestrator_graph():
     builder.add_node("ai_brain", ai_brain_node)
     builder.add_node("generate", generate_node)
     builder.add_node("image_gen", image_gen_node)
+    builder.add_node("video_gen", video_gen_node)
     builder.add_node("publish", publish_node)
 
     builder.add_edge(START, "scrape")
     builder.add_edge("scrape", "ai_brain")
     builder.add_edge("ai_brain", "generate")
-    builder.add_edge("generate", "image_gen")
+
+    # Conditional routing after content generation
+    builder.add_conditional_edges(
+        "generate",
+        route_media_generation,
+        {"image_gen": "image_gen", "video_gen": "video_gen"},
+    )
+
     builder.add_edge("image_gen", "publish")
+    builder.add_edge("video_gen", "publish")
     builder.add_edge("publish", END)
 
     # Use MemorySaver checkpointer to persist state across interruptions
