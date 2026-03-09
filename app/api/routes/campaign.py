@@ -1,5 +1,5 @@
 """
-Campaign Route — Multi-Agent AI Brain + RAG Content Generation
+Campaign Route — Scraping + Multi-Agent AI Brain + RAG Content Generation
 
 POST /campaign/create
   - Accepts brand_id, product_service, icp, tone, description, content_types, template_type
@@ -10,7 +10,10 @@ POST /campaign/create
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
-from typing import List, Literal
+from typing import List, Literal, Optional
+import json
+import asyncio
+
 from app.utils.db_service import get_connection
 from app.agents.orchestrator import graph
 import json
@@ -22,10 +25,10 @@ router = APIRouter()
 class CampaignCreate(BaseModel):
     brand_id: int
     product_service: str
-    icp: str                            
-    tone: str                           
+    icp: str
+    tone: str
     description: str
-    content_types: List[str]            
+    content_types: List[str]
     template_type: Literal[
         "educational",
         "problem_solution",
@@ -34,6 +37,43 @@ class CampaignCreate(BaseModel):
         default="educational",
         description="Prompt template strategy for content generation",
     )
+
+
+async def _scrape_and_embed(
+    company_name: str,
+    instagram_handle: Optional[str],
+    twitter_handle: Optional[str],
+    linkedin_handle: Optional[str],
+):
+    """Scrape all platforms and embed content into vector DB."""
+    print(f"[campaign/scrape] Starting scraping for '{company_name}'...")
+
+    scraped_data = await ScrapingOrchestrator.scrape_all_platforms(
+        instagram_handle=instagram_handle,
+        linkedin_handle=linkedin_handle,
+        twitter_handle=twitter_handle,
+    )
+
+    if not scraped_data:
+        print("[campaign/scrape] No data scraped — skipping embedding.")
+        return
+
+    try:
+        chunks = TextProcessor.process_all_platforms(scraped_data, company=company_name)
+        if chunks:
+            vector_db = VectorDB()
+            texts = [c["text"] for c in chunks]
+            metadatas = [c.get("metadata", {}) for c in chunks]
+            vector_db.add_texts(company=company_name, texts=texts, metadatas=metadatas)
+            print(f"[campaign/scrape] Embedded {len(texts)} chunks into vector DB.")
+        else:
+            print("[campaign/scrape] No chunks to embed.")
+        print("[campaign/scrape] Scraping + embedding complete.")
+    except Exception as e:
+        print(f"[campaign/scrape] Embedding failed (non-fatal): {e}")
+
+
+
 
 @router.post("/campaign/create")
 async def create_campaign(data: CampaignCreate):
@@ -137,11 +177,11 @@ def get_campaign(campaign_id: int):
     """Fetch an existing campaign by ID, including its 7-day generated content."""
     conn = get_connection()
     cur = conn.cursor()
-    
+
     try:
         cur.execute(
             """
-            SELECT c.*, b.company_name 
+            SELECT c.*, b.company_name
             FROM campaigns c
             JOIN brands b ON c.brand_id = b.id
             WHERE c.id = %s
@@ -149,10 +189,10 @@ def get_campaign(campaign_id: int):
             (campaign_id,)
         )
         campaign = cur.fetchone()
-        
+
         if not campaign:
             raise HTTPException(status_code=404, detail="Campaign not found")
-            
+
         return {
             "success": True,
             "campaign": {
@@ -168,7 +208,7 @@ def get_campaign(campaign_id: int):
                 "created_at": campaign["created_at"].isoformat() if campaign["created_at"] else None
             }
         }
-        
+
     except HTTPException:
         raise
     except Exception as e:

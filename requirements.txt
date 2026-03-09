@@ -31,3 +31,6 @@ python-multipart>=0.0.6
 psycopg2-binary
 langgraph>=0.2.0
 langgraph-checkpoint>=2.0.0
+
+# Social Media Publishing
+tweepy>=4.14.0

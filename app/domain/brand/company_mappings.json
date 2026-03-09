@@ -53,6 +53,18 @@
     "linkedin": "https://www.linkedin.com/company/canva/",
     "twitter": "canva"
   },
+  "consilio": {
+    "company_name": "Consilio",
+    "instagram": "consilio_ltd",
+    "linkedin": "https://www.linkedin.com/company/consilio-llc/",
+    "twitter": "ConsilioGlobal"
+  },
+  "swiggy": {
+    "company_name": "Swiggy",
+    "instagram": "swiggyindia",
+    "linkedin": "https://in.linkedin.com/company/swiggy-in",
+    "twitter": "Swiggy"
+  },
   "justbooks": {
     "company_name": "justbooks",
     "instagram": "justbooksclc",
