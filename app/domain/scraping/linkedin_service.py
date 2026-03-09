@@ -183,11 +183,24 @@ async def scrape_linkedin(company_url):
                             for idx, elem in enumerate(elements[:LIMIT], 1):
                                 try:
                                     text = await elem.inner_text()
+                                    
+                                    # Try to find an image in this post
+                                    image_url = ""
+                                    try:
+                                        img_elem = await elem.query_selector("img")
+                                        if img_elem:
+                                            src = await img_elem.get_attribute("src")
+                                            if src and not src.startswith("data:"):
+                                                image_url = src
+                                    except:
+                                        pass
+                                        
                                     if text and len(text.strip()) > 20:
                                         posts.append({
                                             "content": text.strip(),
                                             "post_date": "",
-                                            "post_url": company_url
+                                            "post_url": company_url,
+                                            "image_url": image_url
                                         })
                                         print(f"   Post {idx}: {text.strip()[:50]}...")
                                 except:
@@ -198,11 +211,17 @@ async def scrape_linkedin(company_url):
                         try:
                             text = block.get_text(" ", strip=True)
                             
+                            image_url = ""
+                            img = block.find("img")
+                            if img and img.get("src") and not img.get("src").startswith("data:"):
+                                image_url = img.get("src")
+                            
                             if text and len(text) > 20:
                                 posts.append({
                                     "content": text,
                                     "post_date": "",  
-                                    "post_url": company_url
+                                    "post_url": company_url,
+                                    "image_url": image_url
                                 })
                                 print(f"   Post {idx}: {text[:50]}...")
                         except Exception as e:

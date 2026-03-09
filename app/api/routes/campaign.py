@@ -43,7 +43,7 @@ async def create_campaign(data: CampaignCreate):
 
     try:
         cur.execute(
-            "SELECT company_name, instagram_handle, twitter_handle, linkedin_url FROM brands WHERE id = %s",
+            "SELECT company_name, instagram_handle, twitter_handle, linkedin_url, website_url FROM brands WHERE id = %s",
             (data.brand_id,),
         )
         brand = cur.fetchone()
@@ -90,6 +90,7 @@ async def create_campaign(data: CampaignCreate):
             "instagram_handle": brand.get("instagram_handle"),
             "twitter_handle": brand.get("twitter_handle"),
             "linkedin_handle": brand.get("linkedin_url"),
+            "website_url": brand.get("website_url"),
         }
 
         # The graph will run: scrape → ai_brain → generate, then pause BEFORE 'publish'

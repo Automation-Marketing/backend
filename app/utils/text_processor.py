@@ -83,11 +83,12 @@ class TextProcessor:
             if mentions:
                 metadata["mentions"] = ", ".join(mentions) 
             
+            if post.get("image_url"):
+                metadata["image_url"] = post.get("image_url", "")
+
             if platform == "instagram":
                 if post.get("likes"):
                     metadata["likes"] = str(post.get("likes", ""))
-                if post.get("image_url"):
-                    metadata["image_url"] = post.get("image_url", "")
                 metadata["media_type"] = post.get("media_type", "post")
             elif platform == "linkedin":
                 if post.get("company_url"):
@@ -133,7 +134,38 @@ class TextProcessor:
             chunks = TextProcessor.chunk_posts(twitter_posts, "twitter", company)
             all_chunks.extend(chunks)
             print(f"Processed {len(chunks)} Twitter posts")
-        
+
+        if "website" in scraped_data and scraped_data["website"]:
+            website_pages = scraped_data["website"].get("pages", [])
+            for page in website_pages:
+                content = page.get("content", "")
+                title = page.get("title", "")
+                meta = page.get("meta_description", "")
+                url = page.get("url", "")
+
+                # Combine title + meta + content for a richer chunk
+                full_text = ""
+                if title:
+                    full_text += f"{title}. "
+                if meta:
+                    full_text += f"{meta}. "
+                full_text += content
+
+                cleaned = TextProcessor.clean_text(full_text)
+                if len(cleaned) < 30:
+                    continue
+
+                all_chunks.append({
+                    "text": cleaned,
+                    "metadata": {
+                        "platform": "website",
+                        "company": company,
+                        "post_url": url,
+                        "page_title": title,
+                    }
+                })
+            print(f"Processed {len(website_pages)} website pages")
+
         print(f"Total chunks created: {len(all_chunks)}")
         return all_chunks
 

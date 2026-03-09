@@ -127,6 +127,7 @@ class ContentAgent:
     def generate(
         self,
         brand: str,
+        website_url: str,
         icp: str,
         tone: str,
         description: str,
@@ -156,6 +157,7 @@ class ContentAgent:
 
         invoke_inputs = {
             "brand": brand,
+            "website_url": website_url or "No website available",
             "icp": icp,
             "tone": tone,
             "description": description,
@@ -200,6 +202,7 @@ class ContentAgent:
     def generate_monthly(
         self,
         brand: str,
+        website_url: str,
         icp: str,
         tone: str,
         description: str,
@@ -251,6 +254,7 @@ class ContentAgent:
 
             invoke_inputs = {
                 "brand": brand,
+                "website_url": website_url or "No website available",
                 "icp": icp,
                 "tone": tone,
                 "description": description,

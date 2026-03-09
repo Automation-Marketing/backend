@@ -109,10 +109,24 @@ async def get_twitter_data(username: str = "elonmusk"):
                             if not text_element:
                                 text_element = await article.query_selector("div[lang]")
 
+                            image_url = ""
+                            try:
+                                # Look for media images (excluding avatars and emojis)
+                                img_elements = await article.query_selector_all("div[data-testid='tweetPhoto'] img")
+                                if img_elements:
+                                    src = await img_elements[0].get_attribute("src")
+                                    if src and "twimg.com/media" in src:
+                                        image_url = src
+                            except:
+                                pass
+
                             if text_element:
                                 text = await text_element.inner_text()
                                 if text and text not in [t["content"] for t in tweets]:
-                                    tweets.append({"content": text})
+                                    tweets.append({
+                                        "content": text,
+                                        "image_url": image_url
+                                    })
                         except:
                             continue
 

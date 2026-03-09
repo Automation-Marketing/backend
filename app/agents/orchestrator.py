@@ -14,7 +14,9 @@ from app.agents.usecase_agent import UsecaseAgent
 from app.agents.objectives_agent import ObjectivesAgent
 from app.agents.audience_agent import AudienceAgent
 from app.agents.positioning_agent import PositioningAgent
+from app.agents.visual_analyzer_agent import VisualAnalyzerAgent
 from app.domain.brand.scraping_orchestrator import ScrapingOrchestrator
+from app.domain.scraping.website_scraper import scrape_website
 from app.utils.text_processor import TextProcessor
 from app.utils.vector_db import VectorDB
 
@@ -39,6 +41,7 @@ class AgentState(TypedDict):
     instagram_handle: Optional[str]
     twitter_handle: Optional[str]
     linkedin_handle: Optional[str]
+    website_url: Optional[str]
 
     scraped_data: dict
     ai_brain: dict
@@ -50,32 +53,64 @@ class AgentState(TypedDict):
 # Node 1: Scrape social media platforms and populate the vector DB
 # ---------------------------------------------------------------------------
 async def scrape_node(state: AgentState):
-    """Integrates ScrapingOrchestrator to pull data and populate the vector DB."""
+    """Scrapes social media platforms AND the company website, then populates the vector DB."""
     print(f"[Orchestrator] Running scrape_node for '{state['company_name']}'...")
 
+    # ── Social media scraping ─────────────────────────────────────────
     scraped_data = await ScrapingOrchestrator.scrape_all_platforms(
         instagram_handle=state.get("instagram_handle"),
         linkedin_handle=state.get("linkedin_handle"),
         twitter_handle=state.get("twitter_handle")
     )
 
+    if not scraped_data:
+        scraped_data = {}
+
+    # ── Website scraping ──────────────────────────────────────────────
+    website_url = state.get("website_url")
+    if website_url and website_url.strip():
+        try:
+            print(f"[Orchestrator] Scraping website: {website_url}")
+            website_data = scrape_website(website_url.strip())
+
+            pages = website_data.get("pages", [])
+            if pages:
+                # Print scraped content to console
+                print(f"\n{'='*60}")
+                print(f"[Orchestrator] WEBSITE SCRAPED CONTENT for '{state['company_name']}'")
+                print(f"{'='*60}")
+                for page in pages:
+                    print(f"\n--- {page['url']} ---")
+                    print(f"Title: {page.get('title', 'N/A')}")
+                    print(f"Meta:  {page.get('meta_description', 'N/A')}")
+                    print(f"Content:\n{page.get('content', '')}")
+                print(f"{'='*60}\n")
+
+                # Add to scraped_data so it gets processed together
+                scraped_data["website"] = website_data
+            else:
+                print("[Orchestrator] Website scraping returned no pages.")
+        except Exception as e:
+            print(f"[Orchestrator] Website scraping failed (non-fatal): {e}")
+
+    # ── Process & embed all scraped data ──────────────────────────────
     if scraped_data:
         text_processor = TextProcessor()
         vector_db = VectorDB()
         chunks = text_processor.process_all_platforms(scraped_data, state['company_name'])
 
         if chunks:
-            print(f"[Orchestrator] Embedding {len(chunks)} chunks...")
+            print(f"[Orchestrator] Embedding {len(chunks)} chunks into vector DB...")
             vector_db.add_posts(state['company_name'], chunks)
 
     return {"scraped_data": scraped_data or {}}
 
 
 # ---------------------------------------------------------------------------
-# Node 2: AI Brain — run the 5 strategy agents sequentially
+# Node 2: AI Brain — run the strategy agents sequentially
 # ---------------------------------------------------------------------------
-def ai_brain_node(state: AgentState):
-    """Runs Competition → Usecase → Objectives → Audience → Positioning agents."""
+async def ai_brain_node(state: AgentState):
+    """Runs Competition → Usecase → Objectives → Audience → Positioning → VisualAnalyzer agents."""
     company_name = state["company_name"]
     product_service = state.get("product_service", "")
     icp = state.get("icp", "")
@@ -157,6 +192,38 @@ def ai_brain_node(state: AgentState):
     positioning_out = positioning_agent.run(company_name, product_service, tone, description, str(competition_out), str(usecase_out), str(audience_out))
     _save_to_memory("positioning", str(positioning_out))
 
+    # --- Agent 6: Visual Analyzer -----------------------------------------
+    print("[Agent 6/6] Running VisualAnalyzerAgent...")
+    scraped_data = state.get("scraped_data", {})
+    image_urls = []
+    
+    # Extract from Instagram
+    ig_data = scraped_data.get("instagram", {})
+    if ig_data:
+        for post in ig_data.get("last_10_posts_and_reels", []):
+            if post.get("image_url"):
+                image_urls.append(post.get("image_url"))
+                
+    # Extract from LinkedIn
+    li_data = scraped_data.get("linkedin", {})
+    if li_data:
+        for post in li_data.get("recent_posts", []):
+            if post.get("image_url"):
+                image_urls.append(post.get("image_url"))
+                
+    # Extract from Twitter
+    tw_data = scraped_data.get("twitter", {})
+    if tw_data:
+        for post in tw_data.get("posts", []):
+            if post.get("image_url"):
+                image_urls.append(post.get("image_url"))
+                
+    visual_identity = "No visual context analyzed."
+    if image_urls:
+        visual_agent = VisualAnalyzerAgent()
+        visual_identity = await visual_agent.analyze_images(company_name, image_urls)
+        _save_to_memory("visual", visual_identity)
+
     # --- Assemble AI Brain ------------------------------------------------
     ai_brain = {
         "competitors": competition_out.get("competitors", []),
@@ -166,6 +233,7 @@ def ai_brain_node(state: AgentState):
         "objectives": objectives_out.get("objectives", []),
         "target_users": audience_out.get("target_users", {}),
         "positioning": positioning_out.get("positioning", {}),
+        "visual_identity": visual_identity,
     }
 
     print("[Orchestrator] AI Brain Generation Complete!")
@@ -190,6 +258,7 @@ def generate_node(state: AgentState):
 
     monthly_content = agent.generate_monthly(
         brand=state['company_name'],
+        website_url=state.get('website_url', ''),
         icp=state['icp'],
         tone=state['tone'],
         description=enhanced_description,
@@ -215,11 +284,26 @@ def image_gen_node(state: AgentState):
         print("[Orchestrator] No days to generate images for.")
         return {"generated_content": generated_content}
 
+    if not any(d.get("content_type") in ("canonical_post", "image", "carousel") for d in days):
+        print("[Orchestrator] No images/carousels to generate for this campaign.")
+        return {"generated_content": generated_content}
+
     try:
         image_gen = ImageGenerator()
-        updated_days = image_gen.generate_for_days(days, campaign_id)
+        ai_brain = state.get("ai_brain", {})
+        visual_identity = ai_brain.get("visual_identity", "No specific visual identity analyzed.")
+        
+        updated_days = image_gen.generate_for_days(
+            days, 
+            campaign_id,
+            company_name=state.get("company_name", ""),
+            website_url=state.get("website_url", ""),
+            visual_identity=visual_identity
+        )
         generated_content["days"] = updated_days
-        print(f"[Orchestrator] Image generation complete for {len(updated_days)} days.")
+        
+        count = sum(1 for d in updated_days if "image_url" in d or any(s.get("image_url") for s in d.get("carousel", {}).get("slides", [])))
+        print(f"[Orchestrator] Image generation complete. Generated images for {count} days.")
     except Exception as e:
         print(f"[Orchestrator] Image generation failed (non-fatal): {e}")
 
@@ -241,30 +325,30 @@ def video_gen_node(state: AgentState):
         print("[Orchestrator] No days to generate videos for.")
         return {"generated_content": generated_content}
 
+    if not any(d.get("content_type") == "video_script" for d in days):
+        print("[Orchestrator] No video scripts to generate for this campaign.")
+        return {"generated_content": generated_content}
+
     try:
         video_gen = VideoGenerator()
-        updated_days = video_gen.generate_for_days(days, campaign_id)
+        ai_brain = state.get("ai_brain", {})
+        visual_identity = ai_brain.get("visual_identity", "No specific visual identity analyzed.")
+        
+        updated_days = video_gen.generate_for_days(
+            days, 
+            campaign_id,
+            company_name=state.get("company_name", ""),
+            website_url=state.get("website_url", ""),
+            visual_identity=visual_identity
+        )
         generated_content["days"] = updated_days
-        print(f"[Orchestrator] Video generation complete for {len(updated_days)} days.")
+        
+        count = sum(1 for d in updated_days if "video_url" in d)
+        print(f"[Orchestrator] Video generation complete. Generated videos for {count} days.")
     except Exception as e:
         print(f"[Orchestrator] Video generation failed (non-fatal): {e}")
 
     return {"generated_content": generated_content}
-
-
-# ---------------------------------------------------------------------------
-# Router: decide whether to run image_gen or video_gen after content generation
-# ---------------------------------------------------------------------------
-def route_media_generation(state: AgentState) -> str:
-    """Route to image_gen or video_gen based on the content types requested."""
-    content_types = state.get("content_types", [])
-
-    if "video_script" in content_types:
-        print("[Orchestrator] Routing to video_gen_node (video_script detected)")
-        return "video_gen"
-    else:
-        print("[Orchestrator] Routing to image_gen_node (canonical_post / image detected)")
-        return "image_gen"
 
 
 # ---------------------------------------------------------------------------
@@ -324,15 +408,8 @@ def build_orchestrator_graph():
     builder.add_edge(START, "scrape")
     builder.add_edge("scrape", "ai_brain")
     builder.add_edge("ai_brain", "generate")
-
-    # Conditional routing after content generation
-    builder.add_conditional_edges(
-        "generate",
-        route_media_generation,
-        {"image_gen": "image_gen", "video_gen": "video_gen"},
-    )
-
-    builder.add_edge("image_gen", "publish")
+    builder.add_edge("generate", "image_gen")
+    builder.add_edge("image_gen", "video_gen")
     builder.add_edge("video_gen", "publish")
     builder.add_edge("publish", END)
 
