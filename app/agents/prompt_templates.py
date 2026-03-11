@@ -49,7 +49,7 @@ Return ONLY this JSON (no other text):
 """
 
 _SCHEMA_CANONICAL = """\
-  "canonical_post": "150-200 word {tone} MARKETING post — must include a strong hook in the first line, deliver clear value, and end with a compelling CTA that drives engagement or conversion",
+  "canonical_post": "{caption_length} {tone} MARKETING post — must include a strong hook in the first line, deliver clear value, and end with a compelling CTA that drives engagement or conversion",
   "visual_direction": "detailed photorealistic image description for this post — MUST incorporate the brand's color palette, logo style, and visual identity from their website. Describe specific colors (e.g. 'brand blue #2563EB'), include brand logo placement, and match the company's overall aesthetic. The image must look like an official branded marketing asset, not a generic stock photo",
 """
 
@@ -267,12 +267,12 @@ Return ONLY this JSON:
 }}"""
 
 
-def _build_day_schema(day: int, content_type: str) -> str:
+def _build_day_schema(day: int, content_type: str, caption_length: str) -> str:
     """Build the JSON schema fragment for a single day."""
     if content_type in ("image", "canonical_post"):
         return (
             f'    {{"day": {day}, "content_type": "canonical_post", '
-            f'"canonical_post": "150-200 word marketing post with hook + value + CTA", '
+            f'"canonical_post": "{caption_length} marketing post with hook + value + CTA", '
             f'"visual_direction": "photorealistic BRANDED image — use the company\'s exact colors, logo, and visual style from their website", '
             f'"tags": ["tag1", "tag2", "tag3", "tag4", "tag5"]}}'
         )
@@ -296,7 +296,7 @@ def _build_day_schema(day: int, content_type: str) -> str:
             f'"tags": ["tag1", "tag2", "tag3", "tag4", "tag5"]}}'
         )
     else:
-        return _build_day_schema(day, "canonical_post")
+        return _build_day_schema(day, "canonical_post", caption_length)
 
 
 def get_monthly_template(
@@ -304,6 +304,7 @@ def get_monthly_template(
     content_types: list[str],
     day_start: int,
     day_end: int,
+    caption_length: str,
 ) -> tuple:
     """
     Build a prompt template for a batch of days in the monthly calendar.
@@ -326,7 +327,7 @@ def get_monthly_template(
         ct_index = (day - 1) % len(content_types)
         ct = content_types[ct_index]
         day_assignments_lines.append(f"- Day {day}: {ct}")
-        day_schema_lines.append(_build_day_schema(day, ct))
+        day_schema_lines.append(_build_day_schema(day, ct, caption_length))
 
     day_assignments = "\n".join(day_assignments_lines)
     day_schema = ",\n".join(day_schema_lines)

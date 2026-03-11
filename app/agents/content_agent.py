@@ -133,6 +133,7 @@ class ContentAgent:
         description: str,
         content_types: list[str],
         template_type: str = "educational",
+        caption_size: str = "average",
     ) -> dict:
         """
         Single content piece generation (original behavior).
@@ -155,6 +156,8 @@ class ContentAgent:
 
         print(f"[ContentAgent] Invoking Gemini ({GEMINI_MODEL}) with template '{template_type}'...")
 
+        caption_length = "35 word" if caption_size == "small" else "100 word"
+
         invoke_inputs = {
             "brand": brand,
             "website_url": website_url or "No website available",
@@ -162,6 +165,7 @@ class ContentAgent:
             "tone": tone,
             "description": description,
             "context": context,
+            "caption_length": caption_length,
         }
 
         executor = ThreadPoolExecutor(max_workers=1)
@@ -208,6 +212,7 @@ class ContentAgent:
         description: str,
         content_types: list[str],
         template_type: str = "educational",
+        caption_size: str = "average",
     ) -> dict:
         """
         Generate a 7-day weekly content calendar.
@@ -245,11 +250,14 @@ class ContentAgent:
                 ct = content_types[ct_index]
                 day_assignments_lines.append(f"- Day {day}: {ct}")
 
+            caption_length = "35 word" if caption_size == "small" else "100 word"
+
             prompt, day_schema_str = get_monthly_template(
                 template_type=template_type,
                 content_types=content_types,
                 day_start=day_start,
                 day_end=day_end,
+                caption_length=caption_length,
             )
 
             invoke_inputs = {
@@ -259,6 +267,7 @@ class ContentAgent:
                 "tone": tone,
                 "description": description,
                 "context": context,
+                "caption_length": caption_length,
                 "day_start": str(day_start),
                 "day_end": str(day_end),
                 "day_assignments": "\n".join(day_assignments_lines),

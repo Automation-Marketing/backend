@@ -25,8 +25,9 @@ router = APIRouter()
 class CampaignCreate(BaseModel):
     brand_id: int
     product_service: str
-    icp: str
-    tone: str
+    icp: str                            
+    tone: str                           
+    caption_size: str = "average"
     description: str
     content_types: List[str]
     template_type: Literal[
@@ -96,8 +97,8 @@ async def create_campaign(data: CampaignCreate):
         cur.execute(
             """
             INSERT INTO campaigns
-                (brand_id, product_service, icp, tone, description, content_type, status)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
+                (brand_id, product_service, icp, tone, caption_size, description, content_type, status)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
             RETURNING id;
             """,
             (
@@ -105,6 +106,7 @@ async def create_campaign(data: CampaignCreate):
                 data.product_service,
                 data.icp,
                 data.tone,
+                data.caption_size,
                 data.description,
                 ",".join(data.content_types),
                 "generating",
@@ -124,6 +126,7 @@ async def create_campaign(data: CampaignCreate):
             "product_service": data.product_service,
             "icp": data.icp,
             "tone": data.tone,
+            "caption_size": data.caption_size,
             "description": data.description,
             "content_types": data.content_types,
             "template_type": data.template_type,

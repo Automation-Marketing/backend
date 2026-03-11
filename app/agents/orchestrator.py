@@ -34,6 +34,7 @@ class AgentState(TypedDict):
     product_service: str
     icp: str
     tone: str
+    caption_size: str
     description: str
     content_types: List[str]
     template_type: str
@@ -261,6 +262,7 @@ def generate_node(state: AgentState):
         website_url=state.get('website_url', ''),
         icp=state['icp'],
         tone=state['tone'],
+        caption_size=state.get('caption_size', 'average'),
         description=enhanced_description,
         content_types=state['content_types'],
         template_type=state['template_type']

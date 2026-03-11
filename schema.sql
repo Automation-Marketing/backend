@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS campaigns (
     product_service     VARCHAR(255),
     icp                 TEXT,                          
     tone                VARCHAR(100),                  
+    caption_size        VARCHAR(50) DEFAULT 'average',                  
     description         TEXT,                          
     content_type        VARCHAR(255),                  
     ai_brain            JSONB,
