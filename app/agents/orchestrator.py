@@ -276,6 +276,7 @@ def generate_node(state: AgentState):
 # ---------------------------------------------------------------------------
 def image_gen_node(state: AgentState):
     """Generates images for canonical posts using their visual descriptions."""
+    import glob as _glob
     print(f"[Orchestrator] Running image_gen_node for '{state['company_name']}'...")
 
     generated_content = state.get("generated_content", {})
@@ -290,6 +291,24 @@ def image_gen_node(state: AgentState):
         print("[Orchestrator] No images/carousels to generate for this campaign.")
         return {"generated_content": generated_content}
 
+    # ── Discover brand logo ────────────────────────────────────────────────
+    logos_dir = os.path.join("data", "media", "logos")
+    logo_path: str | None = None
+    preferred = os.path.join(logos_dir, "logo.jpeg")
+    if os.path.exists(preferred):
+        logo_path = preferred
+    else:
+        # Fallback: pick the first image file found in the logos directory
+        for ext in ("*.jpeg", "*.jpg", "*.png", "*.webp"):
+            matches = _glob.glob(os.path.join(logos_dir, ext))
+            if matches:
+                logo_path = matches[0]
+                break
+    if logo_path:
+        print(f"[Orchestrator] Brand logo found: {logo_path}")
+    else:
+        print("[Orchestrator] No brand logo found in data/media/logos/ — generating without logo.")
+
     try:
         image_gen = ImageGenerator()
         ai_brain = state.get("ai_brain", {})
@@ -300,7 +319,8 @@ def image_gen_node(state: AgentState):
             campaign_id,
             company_name=state.get("company_name", ""),
             website_url=state.get("website_url", ""),
-            visual_identity=visual_identity
+            visual_identity=visual_identity,
+            logo_path=logo_path
         )
         generated_content["days"] = updated_days
         
